@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check } from "lucide-react";
 
@@ -58,6 +59,7 @@ export default function AutoSync() {
 
   return (
     <MobileLayout>
+      <BackButton />
       <div className="flex flex-col h-full px-6 py-12 animate-fade-in">
         {/* Logo */}
         <div className="flex justify-center mb-12">

@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
+import { BackButton } from "@/components/BackButton";
+import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Shield, CreditCard, LogOut, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -52,19 +54,11 @@ export default function Settings() {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-full px-6 py-8 animate-fade-in">
+      <BackButton />
+      <div className="flex flex-col h-full px-6 py-8 pb-24 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/dashboard")}
-            className="hover:bg-secondary/50"
-          >
-            <ArrowLeft size={20} />
-          </Button>
+        <div className="flex items-center justify-center mb-8">
           <Logo />
-          <div className="w-10" />
         </div>
 
         {/* Content */}
@@ -125,6 +119,7 @@ export default function Settings() {
           Logout
         </Button>
       </div>
+      <BottomNav />
     </MobileLayout>
   );
 }

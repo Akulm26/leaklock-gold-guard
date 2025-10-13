@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
+import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Bell, Settings, Edit, Trash2 } from "lucide-react";
@@ -103,7 +104,7 @@ export default function Dashboard() {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-full px-6 py-8 animate-fade-in">
+      <div className="flex flex-col h-full px-6 py-8 pb-24 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <Logo />
@@ -209,6 +210,7 @@ export default function Dashboard() {
           <Plus size={24} />
         </Button>
       </div>
+      <BottomNav />
     </MobileLayout>
   );
 }

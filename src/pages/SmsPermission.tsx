@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Shield, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ export default function SmsPermission() {
 
   return (
     <MobileLayout>
+      <BackButton />
       <div className="flex flex-col h-full px-6 py-12 animate-fade-in">
         {/* Logo */}
         <div className="flex justify-center mb-12">
