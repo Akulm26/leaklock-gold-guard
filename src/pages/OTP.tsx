@@ -54,6 +54,7 @@ export default function OTP() {
   };
 
   const validateOtp = async (otpValue: string) => {
+    // Ensure phone number exists from previous step
     if (!phone) {
       toast.error("Phone number not found. Please start over.");
       navigate("/");
@@ -63,6 +64,20 @@ export default function OTP() {
     setIsValidating(true);
     
     try {
+      /**
+       * STEP 1: Verify OTP with Supabase Auth
+       * 
+       * This validates the user-entered OTP against the one sent via SMS:
+       * 1. Supabase checks if the OTP matches what was generated
+       * 2. Verifies the OTP hasn't expired (typically 60 seconds validity)
+       * 3. If valid, creates an authenticated session for the user
+       * 4. Returns user object with session tokens (access_token, refresh_token)
+       * 
+       * Parameters:
+       * - phone: The phone number that received the OTP (+91XXXXXXXXXX)
+       * - token: The OTP code entered by user (e.g., "123456")
+       * - type: 'sms' indicates this is phone-based OTP verification
+       */
       const { data, error } = await supabase.auth.verifyOtp({
         phone,
         token: otpValue,
@@ -71,10 +86,28 @@ export default function OTP() {
 
       if (error) throw error;
 
+      /**
+       * STEP 2: Handle successful authentication
+       * 
+       * data.user contains:
+       * - id: Unique user ID (UUID)
+       * - phone: Verified phone number
+       * - created_at: Account creation timestamp
+       * - Session tokens are automatically stored by Supabase client
+       */
       if (data.user) {
         toast.success("OTP verified successfully!");
         
-        // Check if user profile exists
+        /**
+         * STEP 3: Route user based on account status
+         * 
+         * Check if this is a new user or existing user:
+         * - New user: Redirect to profile setup to collect name, preferences
+         * - Existing user: Redirect directly to dashboard
+         * 
+         * Note: In production, you'd check this against a database table
+         * instead of localStorage
+         */
         const isNewUser = !localStorage.getItem("userName");
         
         if (isNewUser) {
@@ -85,9 +118,16 @@ export default function OTP() {
       }
     } catch (error: any) {
       console.error("OTP verification error:", error);
+      
+      /**
+       * Common errors:
+       * - "Invalid token": Wrong OTP entered
+       * - "Token expired": OTP validity period (60s) has passed
+       * - "Too many attempts": Rate limiting triggered
+       */
       setError(true);
-      setOtp(["", "", "", ""]);
-      inputRefs[0].current?.focus();
+      setOtp(["", "", "", ""]); // Clear all OTP inputs
+      inputRefs[0].current?.focus(); // Focus first input for retry
       toast.error(error.message || "Invalid OTP. Please try again.");
     } finally {
       setIsValidating(false);
@@ -98,6 +138,19 @@ export default function OTP() {
     if (!phone) return;
     
     try {
+      /**
+       * RESEND OTP FLOW
+       * 
+       * This triggers the same OTP generation process as initial login:
+       * 1. Invalidates any previous OTP for this phone number
+       * 2. Generates a new random OTP code
+       * 3. Sends new SMS via configured SMS provider
+       * 
+       * Rate limiting applies:
+       * - Typically max 1 OTP per 60 seconds per phone number
+       * - Prevents spam and abuse
+       * - If rate limit hit, error will be thrown and caught below
+       */
       const { error } = await supabase.auth.signInWithOtp({
         phone,
       });

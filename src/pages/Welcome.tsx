@@ -15,31 +15,64 @@ export default function Welcome() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleContinue = async () => {
+    // Validate phone number has at least 10 digits
     if (phone.length < 10) return;
     
     setIsLoading(true);
     
-    // Format phone number to E.164 format (+91XXXXXXXXXX)
+    /**
+     * STEP 1: Format phone number to E.164 international format
+     * E.164 format is required by Supabase: +[country_code][phone_number]
+     * Example: +919876543210
+     */
     const formattedPhone = `+91${phone}`;
     
     try {
+      /**
+       * STEP 2: Trigger OTP generation via Supabase Auth
+       * 
+       * This calls Supabase backend which:
+       * 1. Generates a random OTP code (typically 6 digits)
+       * 2. Stores it temporarily in Supabase auth system
+       * 3. Sends SMS via configured SMS provider (Twilio/MessageBird/Vonage/Textlocal)
+       * 
+       * IMPORTANT: SMS provider MUST be configured in backend settings:
+       * - Go to: Authentication → Providers → Phone
+       * - Enable phone provider
+       * - Add SMS provider credentials (API keys, sender ID, etc.)
+       * - Supported providers: Twilio, MessageBird, Vonage, Textlocal
+       * 
+       * Without SMS provider configuration, this will fail with error.
+       */
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
       });
 
       if (error) throw error;
 
-      // Store phone for OTP verification page
+      /**
+       * STEP 3: Store phone number for OTP verification page
+       * The OTP page needs to know which phone number to verify against
+       */
       localStorage.setItem("phone", formattedPhone);
       
+      // Show success message to user
       toast({
         title: "OTP Sent",
         description: "Please check your phone for the verification code.",
       });
       
+      // Navigate to OTP entry page
       navigate("/otp");
     } catch (error: any) {
       console.error("Error sending OTP:", error);
+      
+      /**
+       * Common errors:
+       * - "SMS provider not configured": No SMS service set up in backend
+       * - "Invalid phone number": Wrong format or unsupported country code
+       * - "Rate limit exceeded": Too many OTP requests in short time
+       */
       toast({
         title: "Error",
         description: error.message || "Failed to send OTP. Please try again.",
