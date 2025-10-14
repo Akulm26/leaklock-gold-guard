@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      n8n_webhooks: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          user_id: string
+          webhook_name: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          webhook_name: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          webhook_name?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          name: string
+          next_billing_date: string
+          notes: string | null
+          payment_method: string | null
+          provider: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          billing_cycle: string
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          name: string
+          next_billing_date: string
+          notes?: string | null
+          payment_method?: string | null
+          provider: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          name?: string
+          next_billing_date?: string
+          notes?: string | null
+          payment_method?: string | null
+          provider?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
