@@ -104,6 +104,41 @@ export default function Dashboard() {
     toast.success("Plan canceled. Savings will accrue.");
   };
 
+  const handleRenew = (id: string) => {
+    const updated = subscriptions.map((sub) => {
+      if (sub.id === id) {
+        const currentDate = new Date(sub.next_renewal || sub.renewal || new Date());
+        let newRenewal = new Date(currentDate);
+        
+        // Calculate next renewal based on cycle
+        switch (sub.cycle) {
+          case "monthly":
+            newRenewal.setMonth(newRenewal.getMonth() + 1);
+            break;
+          case "quarterly":
+            newRenewal.setMonth(newRenewal.getMonth() + 3);
+            break;
+          case "yearly":
+            newRenewal.setFullYear(newRenewal.getFullYear() + 1);
+            break;
+          default:
+            newRenewal.setMonth(newRenewal.getMonth() + 1);
+        }
+        
+        return { 
+          ...sub, 
+          status: "active" as const, 
+          next_renewal: newRenewal.toISOString(),
+          last_payment_date: new Date().toISOString()
+        };
+      }
+      return sub;
+    });
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.success("Plan renewed successfully.");
+  };
+
   const formatDate = (isoDate: string) => {
     const date = new Date(isoDate);
     const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -173,6 +208,15 @@ export default function Dashboard() {
               onClick={() => navigate(`/edit-subscription/${sub.id}`)}
             >
               <Edit size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-primary"
+              onClick={() => handleRenew(sub.id)}
+              title="Renew subscription"
+            >
+              <span className="text-xs">🔄</span>
             </Button>
             {sub.status === "active" && (
               <Button
