@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Bell, Settings, Edit, Trash2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { StatusChangeSheet } from "@/components/StatusChangeSheet";
+import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
 
 
 interface Subscription {
@@ -32,6 +34,15 @@ interface Subscription {
   confidence?: number;
   last_seen_at?: string;
   phone?: string;
+  // Detection flags
+  detected_change?: {
+    type: "hard" | "soft";
+    status: "canceled" | "paused";
+    evidence: string;
+    detected_at: string;
+  };
+  watch_flag?: boolean; // Set when user clicks "Not sure"
+  missed_charges?: number; // Count of missed charge cycles
   // Legacy fields for backward compatibility
   name?: string;
   renewal?: string;
@@ -42,9 +53,17 @@ export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const userName = localStorage.getItem("userName");
   const [botOpen, setBotOpen] = useState(false);
+  const [detectedChange, setDetectedChange] = useState<{
+    subscriptionId: string;
+    serviceName: string;
+    detectedStatus: "canceled" | "paused";
+    evidence: string;
+  } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     loadSubscriptions();
+    checkForDetectedChanges();
   }, []);
 
   const calculateSavings = (sub: any) => {
@@ -106,6 +125,90 @@ export default function Dashboard() {
     localStorage.setItem("subscriptions", JSON.stringify(migratedSubs));
   };
 
+  const checkForDetectedChanges = () => {
+    const subs: Subscription[] = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    const hardEvidence = subs.find(sub => 
+      sub.detected_change?.type === "hard" && sub.status === "active"
+    );
+    
+    if (hardEvidence && hardEvidence.detected_change) {
+      setDetectedChange({
+        subscriptionId: hardEvidence.id,
+        serviceName: hardEvidence.plan_name || hardEvidence.merchant_normalized,
+        detectedStatus: hardEvidence.detected_change.status,
+        evidence: hardEvidence.detected_change.evidence,
+      });
+      setSheetOpen(true);
+    }
+  };
+
+  const handleConfirmStatus = (subscriptionId: string, status: "canceled" | "paused") => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        return {
+          ...sub,
+          status,
+          status_changed_at: new Date().toISOString(),
+          detected_change: undefined, // Clear the detection
+          watch_flag: false,
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    loadSubscriptions(); // Recalculate savings
+    toast.success(`Subscription marked as ${status}`);
+  };
+
+  const handleNotSure = (subscriptionId: string) => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        return {
+          ...sub,
+          watch_flag: true, // Set watch flag for future checks
+          detected_change: undefined, // Clear the detection but keep active
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.info("Marked for monitoring. We'll check again next cycle.");
+  };
+
+  const handleSoftEvidenceAction = (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        if (action === "keep") {
+          return {
+            ...sub,
+            missed_charges: 0, // Reset missed charges
+          };
+        }
+        return {
+          ...sub,
+          status: action,
+          status_changed_at: new Date().toISOString(),
+          missed_charges: 0,
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    loadSubscriptions(); // Recalculate savings
+    
+    if (action !== "keep") {
+      toast.success(`Subscription marked as ${action}`);
+    } else {
+      toast.info("Subscription kept active");
+    }
+  };
+
   const handleDelete = (id: string) => {
     const updated = subscriptions.filter((sub) => sub.id !== id);
     localStorage.setItem("subscriptions", JSON.stringify(updated));
@@ -153,6 +256,7 @@ export default function Dashboard() {
     const isExpiring = renewal.color === "text-primary";
     const hasReminders = sub.reminders?.enabled;
     const hasSavings = (sub.savings_lifetime || 0) > 0;
+    const showSoftEvidence = sub.status === "active" && (sub.missed_charges || 0) >= 2;
     
     const statusColors = {
       active: "bg-primary/20 text-primary",
@@ -209,6 +313,16 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
+
+        {/* Soft Evidence Banner */}
+        {showSoftEvidence && (
+          <SoftEvidenceBanner
+            missedCycles={sub.missed_charges || 0}
+            onMarkPaused={() => handleSoftEvidenceAction(sub.id, "paused")}
+            onMarkCanceled={() => handleSoftEvidenceAction(sub.id, "canceled")}
+            onKeepActive={() => handleSoftEvidenceAction(sub.id, "keep")}
+          />
+        )}
       </div>
     );
   };
@@ -350,6 +464,15 @@ export default function Dashboard() {
       >
         <MessageCircle size={24} />
       </Button>
+
+      {/* Status Change Detection Sheet */}
+      <StatusChangeSheet
+        open={sheetOpen}
+        detectedChange={detectedChange}
+        onConfirm={handleConfirmStatus}
+        onNotSure={handleNotSure}
+        onClose={() => setSheetOpen(false)}
+      />
       
       <BottomNav />
     </MobileLayout>
