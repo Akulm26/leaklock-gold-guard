@@ -1,0 +1,4 @@
+project_id = "gatjokqfnstxfmgxmjsf"
+
+[functions.subscription-assistant]
+verify_jwt = false

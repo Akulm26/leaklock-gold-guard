@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, ExternalLink, Copy, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -15,87 +16,51 @@ interface Message {
   providerUrl?: string;
 }
 
-const KNOWN_PROVIDERS: Record<string, { steps: string[]; url: string }> = {
-  netflix: {
-    steps: [
-      "Open Netflix app or visit netflix.com",
-      "Go to Account settings",
-      "Click 'Cancel Membership'",
-      "Confirm cancellation",
-      "You'll have access until the end of your billing period"
-    ],
-    url: "https://www.netflix.com/cancelplan"
-  },
-  spotify: {
-    steps: [
-      "Open Spotify app or visit spotify.com/account",
-      "Click on 'Subscription' in the menu",
-      "Select 'Change plan' or 'Cancel Premium'",
-      "Follow the prompts to confirm",
-      "Premium benefits end at the next billing date"
-    ],
-    url: "https://www.spotify.com/account/subscription/"
-  },
-  "amazon prime": {
-    steps: [
-      "Go to Amazon.in and sign in",
-      "Navigate to 'Account & Lists' → 'Prime Membership'",
-      "Click 'End Membership'",
-      "Follow the cancellation flow",
-      "Confirm your choice"
-    ],
-    url: "https://www.amazon.in/mc/manageyourmembership"
-  },
-};
-
 export default function LLMAssistant() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I can help you cancel or pause your subscriptions. Which service would you like help with?"
+      content: "Hi! I can help you cancel, pause, or renew your subscriptions. Which service would you like help with?"
     }
   ]);
   const [input, setInput] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
+    setInput("");
 
-    // Simulate LLM response
-    setTimeout(() => {
-      const lowerInput = input.toLowerCase();
-      let assistantMessage: Message;
+    try {
+      const { data, error } = await supabase.functions.invoke('subscription-assistant', {
+        body: { message: input }
+      });
 
-      // Check if we know this provider
-      const knownProvider = Object.keys(KNOWN_PROVIDERS).find(key => 
-        lowerInput.includes(key)
-      );
+      if (error) throw error;
 
-      if (knownProvider) {
-        const provider = KNOWN_PROVIDERS[knownProvider];
-        assistantMessage = {
-          role: "assistant",
-          content: `Here's how to cancel ${knownProvider.charAt(0).toUpperCase() + knownProvider.slice(1)}:\n\n${provider.steps.map((step, i) => `${i + 1}. ${step}`).join("\n")}`,
-          hasSteps: true,
-          providerUrl: provider.url
-        };
-      } else {
-        assistantMessage = {
-          role: "assistant",
-          content: "I don't have specific cancellation steps for this provider. Here's a general checklist:\n\n1. Open the provider's app or website\n2. Navigate to Billing or Subscription settings\n3. Look for 'Manage Subscription' or 'Cancel'\n4. Follow the cancellation flow\n5. Confirm and save any confirmation emails",
-          hasSteps: false,
-          providerUrl: "#"
-        };
-      }
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: data.response,
+        hasSteps: data.hasSteps,
+        providerUrl: data.providerUrl
+      };
 
       setMessages(prev => [...prev, assistantMessage]);
-    }, 800);
-
-    setInput("");
+    } catch (error) {
+      console.error('Error calling assistant:', error);
+      toast.error('Failed to get response. Please try again.');
+      
+      // Add fallback message
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        hasSteps: false
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleCopy = (content: string) => {
@@ -116,7 +81,7 @@ export default function LLMAssistant() {
               <Bot className="text-primary" size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Cancellation Assistant</h1>
+              <h1 className="text-2xl font-bold">Subscription Assistant</h1>
               <p className="text-sm text-muted-foreground">Powered by AI</p>
             </div>
           </div>
@@ -182,7 +147,7 @@ export default function LLMAssistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Which service? (e.g., Netflix)"
+              placeholder="e.g., I want to cancel Netflix"
               className="glass-card"
             />
             <Button
