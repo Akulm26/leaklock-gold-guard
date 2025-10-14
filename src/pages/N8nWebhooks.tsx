@@ -25,7 +25,7 @@ export default function N8nWebhooks() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newWebhook, setNewWebhook] = useState({
     webhook_name: "",
-    webhook_url: "",
+    webhook_url: "http://localhost:5678/webhook/2d1e4b18-9694-46c9-9e0b-57f643e3b2da",
     event_type: "subscription_added",
   });
 
