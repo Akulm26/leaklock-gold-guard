@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info } from "lucide-react";
+import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { StatusChangeSheet } from "@/components/StatusChangeSheet";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
@@ -89,6 +89,7 @@ export default function Dashboard() {
     action: "skip" | "pause" | "cancel";
   } | null>(null);
   const [amazonSheetOpen, setAmazonSheetOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     loadSubscriptions();
@@ -123,6 +124,20 @@ export default function Dashboard() {
     const monthlySavings = isCurrentMonth ? Math.round(monthlyCost) : 0;
     
     return { monthly: monthlySavings, lifetime: lifetimeSavings };
+  };
+
+  const handleSyncSubscriptions = async () => {
+    setIsSyncing(true);
+    try {
+      // Simulate SMS data sync
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      loadSubscriptions();
+      toast.success("Subscriptions synced from SMS data");
+    } catch (error) {
+      toast.error("Failed to sync subscriptions");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const loadSubscriptions = () => {
@@ -539,9 +554,10 @@ export default function Dashboard() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/settings")}
+            onClick={handleSyncSubscriptions}
+            disabled={isSyncing}
           >
-            <Settings size={20} />
+            <RefreshCw size={20} className={isSyncing ? "animate-spin" : ""} />
           </Button>
         </div>
 
