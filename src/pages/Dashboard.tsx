@@ -77,6 +77,33 @@ export default function Dashboard() {
     toast.success("Plan deleted.");
   };
 
+  const handlePause = (id: string) => {
+    const updated = subscriptions.map((sub) =>
+      sub.id === id ? { ...sub, status: "paused" as const } : sub
+    );
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.success("Plan paused. Savings will accrue.");
+  };
+
+  const handleResume = (id: string) => {
+    const updated = subscriptions.map((sub) =>
+      sub.id === id ? { ...sub, status: "active" as const } : sub
+    );
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.success("Plan resumed.");
+  };
+
+  const handleCancel = (id: string) => {
+    const updated = subscriptions.map((sub) =>
+      sub.id === id ? { ...sub, status: "canceled" as const } : sub
+    );
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.success("Plan canceled. Savings will accrue.");
+  };
+
   const formatDate = (isoDate: string) => {
     const date = new Date(isoDate);
     const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -138,7 +165,7 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button 
               variant="ghost" 
               size="icon" 
@@ -147,6 +174,39 @@ export default function Dashboard() {
             >
               <Edit size={16} />
             </Button>
+            {sub.status === "active" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePause(sub.id)}
+                title="Pause subscription"
+              >
+                <span className="text-xs">⏸</span>
+              </Button>
+            )}
+            {sub.status === "paused" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-green-400"
+                onClick={() => handleResume(sub.id)}
+                title="Resume subscription"
+              >
+                <span className="text-xs">▶</span>
+              </Button>
+            )}
+            {sub.status !== "canceled" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:text-yellow-500"
+                onClick={() => handleCancel(sub.id)}
+                title="Cancel subscription"
+              >
+                <span className="text-xs">✕</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
