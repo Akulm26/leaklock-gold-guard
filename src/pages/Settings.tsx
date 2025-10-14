@@ -9,41 +9,26 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Shield, CreditCard, LogOut, ChevronRight, Bell, Calendar, MessageSquare, Code2 } from "lucide-react";
 import { toast } from "sonner";
-
 export default function Settings() {
   const navigate = useNavigate();
   const userName = localStorage.getItem("userName");
   const phone = localStorage.getItem("phone");
-  
-  const [pushEnabled, setPushEnabled] = useState(() => 
-    localStorage.getItem("pushNotifications") !== "false"
-  );
-  const [globalReminderEnabled, setGlobalReminderEnabled] = useState(() => 
-    localStorage.getItem("globalReminderEnabled") === "true"
-  );
-  const [globalReminderDays, setGlobalReminderDays] = useState(() => 
-    localStorage.getItem("globalReminderDays") || "3"
-  );
-  const [scanFrequency, setScanFrequency] = useState(() => 
-    parseInt(localStorage.getItem("scanFrequency") || "3")
-  );
-
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem("pushNotifications") !== "false");
+  const [globalReminderEnabled, setGlobalReminderEnabled] = useState(() => localStorage.getItem("globalReminderEnabled") === "true");
+  const [globalReminderDays, setGlobalReminderDays] = useState(() => localStorage.getItem("globalReminderDays") || "3");
+  const [scanFrequency, setScanFrequency] = useState(() => parseInt(localStorage.getItem("scanFrequency") || "3"));
   useEffect(() => {
     localStorage.setItem("pushNotifications", pushEnabled.toString());
   }, [pushEnabled]);
-
   useEffect(() => {
     localStorage.setItem("globalReminderEnabled", globalReminderEnabled.toString());
   }, [globalReminderEnabled]);
-
   useEffect(() => {
     localStorage.setItem("globalReminderDays", globalReminderDays);
   }, [globalReminderDays]);
-
   useEffect(() => {
     localStorage.setItem("scanFrequency", scanFrequency.toString());
   }, [scanFrequency]);
-
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
       localStorage.clear();
@@ -51,7 +36,6 @@ export default function Settings() {
       navigate("/");
     }
   };
-
   const handleApplyGlobalToAll = () => {
     if (confirm("Apply this reminder rule to all existing subscriptions?")) {
       const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
@@ -60,14 +44,13 @@ export default function Settings() {
         reminders: {
           ...sub.reminders,
           enabled: globalReminderEnabled,
-          per_item_Tn: [parseInt(globalReminderDays)],
+          per_item_Tn: [parseInt(globalReminderDays)]
         }
       }));
       localStorage.setItem("subscriptions", JSON.stringify(updated));
       toast.success("Global reminder applied to all plans");
     }
   };
-
   const handleScanNow = () => {
     toast.success("SMS scan started...");
     // Simulate scan
@@ -85,7 +68,6 @@ export default function Settings() {
     localStorage.setItem("subscriptions", JSON.stringify(subs));
     toast.success("Added missed_charges to first subscription. Reload dashboard to see banner.");
   };
-
   const handleAddHardEvidence = () => {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
     if (subs.length === 0) {
@@ -98,18 +80,15 @@ export default function Settings() {
       evidence: "SMS: 'Auto-renew turned off'",
       detected_at: new Date().toISOString()
     };
-    subs[0].evidence_events = [
-      {
-        type: "sms",
-        confidence: "high",
-        at: new Date().toISOString(),
-        note: "Auto-renew turned off"
-      }
-    ];
+    subs[0].evidence_events = [{
+      type: "sms",
+      confidence: "high",
+      at: new Date().toISOString(),
+      note: "Auto-renew turned off"
+    }];
     localStorage.setItem("subscriptions", JSON.stringify(subs));
     toast.success("Added hard evidence to first subscription. Reload dashboard to see sheet.");
   };
-
   const handleSetAmazonRenewal = () => {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
     if (subs.length === 0) {
@@ -123,7 +102,6 @@ export default function Settings() {
     localStorage.setItem("subscriptions", JSON.stringify(subs));
     toast.success("Set first subscription as Amazon with 8-day renewal. Reload dashboard.");
   };
-
   const handleClearTestData = () => {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
     const cleaned = subs.map((sub: any) => ({
@@ -138,53 +116,48 @@ export default function Settings() {
     localStorage.setItem("subscriptions", JSON.stringify(cleaned));
     toast.success("Cleared all test data from subscriptions.");
   };
-
   const getNextScanDates = () => {
     const scansPerMonth = scanFrequency;
     const daysInterval = Math.floor(30 / scansPerMonth);
     const dates = [];
     for (let i = 1; i <= 3; i++) {
       const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + (daysInterval * i));
+      nextDate.setDate(nextDate.getDate() + daysInterval * i);
       dates.push(nextDate.toLocaleDateString());
     }
     return dates.join(", ");
   };
-
-  const settingSections = [
-    {
-      title: "Profile & Account",
-      items: [
-        { icon: User, label: "Name", value: userName, action: () => {} },
-        { icon: Shield, label: "Linked Number", value: `+91 ${phone}`, action: () => {} },
-      ],
-    },
-    {
-      title: "Permissions & Privacy",
-      items: [
-        { 
-          icon: Shield, 
-          label: "SMS Access", 
-          value: "Granted", 
-          action: () => toast.info("SMS permission is active") 
-        },
-      ],
-    },
-    {
-      title: "Subscriptions",
-      items: [
-        { 
-          icon: CreditCard, 
-          label: "Manage Plans", 
-          value: null, 
-          action: () => navigate("/dashboard") 
-        },
-      ],
-    },
-  ];
-
-  return (
-    <MobileLayout>
+  const settingSections = [{
+    title: "Profile & Account",
+    items: [{
+      icon: User,
+      label: "Name",
+      value: userName,
+      action: () => {}
+    }, {
+      icon: Shield,
+      label: "Linked Number",
+      value: `+91 ${phone}`,
+      action: () => {}
+    }]
+  }, {
+    title: "Permissions & Privacy",
+    items: [{
+      icon: Shield,
+      label: "SMS Access",
+      value: "Granted",
+      action: () => toast.info("SMS permission is active")
+    }]
+  }, {
+    title: "Subscriptions",
+    items: [{
+      icon: CreditCard,
+      label: "Manage Plans",
+      value: null,
+      action: () => navigate("/dashboard")
+    }]
+  }];
+  return <MobileLayout>
       <BackButton />
       <div className="flex flex-col h-full px-6 py-8 pb-24 animate-fade-in">
         {/* Header */}
@@ -201,35 +174,23 @@ export default function Settings() {
             </p>
           </div>
 
-          {settingSections.map((section) => (
-            <div key={section.title} className="space-y-3">
+          {settingSections.map(section => <div key={section.title} className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 {section.title}
               </h3>
               <div className="glass-card rounded-xl overflow-hidden">
-                {section.items.map((item, index) => (
-                  <button
-                    key={item.label}
-                    onClick={item.action}
-                    className={`w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors ${
-                      index !== section.items.length - 1 ? "border-b border-border/50" : ""
-                    }`}
-                  >
+                {section.items.map((item, index) => <button key={item.label} onClick={item.action} className={`w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors ${index !== section.items.length - 1 ? "border-b border-border/50" : ""}`}>
                     <div className="flex items-center gap-3">
                       <item.icon className="text-muted-foreground" size={20} />
                       <div className="text-left">
                         <p className="font-medium">{item.label}</p>
-                        {item.value && (
-                          <p className="text-sm text-muted-foreground">{item.value}</p>
-                        )}
+                        {item.value && <p className="text-sm text-muted-foreground">{item.value}</p>}
                       </div>
                     </div>
                     <ChevronRight className="text-muted-foreground" size={20} />
-                  </button>
-                ))}
+                  </button>)}
               </div>
-            </div>
-          ))}
+            </div>)}
 
           {/* Notifications */}
           <div className="space-y-3">
@@ -264,14 +225,10 @@ export default function Settings() {
                     <p className="text-sm text-muted-foreground">Apply to all new plans</p>
                   </div>
                 </div>
-                <Switch 
-                  checked={globalReminderEnabled} 
-                  onCheckedChange={setGlobalReminderEnabled} 
-                />
+                <Switch checked={globalReminderEnabled} onCheckedChange={setGlobalReminderEnabled} />
               </div>
               
-              {globalReminderEnabled && (
-                <>
+              {globalReminderEnabled && <>
                   <div className="space-y-2">
                     <label className="text-sm text-muted-foreground">Remind me before (days)</label>
                     <Select value={globalReminderDays} onValueChange={setGlobalReminderDays}>
@@ -279,78 +236,24 @@ export default function Settings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                          <SelectItem key={n} value={n.toString()}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <SelectItem key={n} value={n.toString()}>
                             T-{n} days
-                          </SelectItem>
-                        ))}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  <Button 
-                    variant="gold-outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={handleApplyGlobalToAll}
-                  >
+                  <Button variant="gold-outline" size="sm" className="w-full" onClick={handleApplyGlobalToAll}>
                     Apply to All Existing Plans
                   </Button>
-                </>
-              )}
+                </>}
             </div>
           </div>
 
           {/* SMS Scan Frequency */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              SMS Scan Frequency
-            </h3>
-            <div className="glass-card rounded-xl p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Calendar className="text-muted-foreground" size={20} />
-                  <div>
-                    <p className="font-medium">Scans Per Month</p>
-                    <p className="text-sm text-muted-foreground">Minimum: 3 scans</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setScanFrequency(Math.max(3, scanFrequency - 1))}
-                    disabled={scanFrequency <= 3}
-                  >
-                    -
-                  </Button>
-                  <span className="font-bold text-lg w-8 text-center">{scanFrequency}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setScanFrequency(scanFrequency + 1)}
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2 pt-2 border-t border-border/50">
-                <p className="text-xs text-muted-foreground">
-                  Next scans: {getNextScanDates()}
-                </p>
-                <Button 
-                  variant="gold-outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={handleScanNow}
-                >
-                  Scan Now
-                </Button>
-              </div>
-            </div>
+            
+            
           </div>
 
           {/* Developer Testing */}
@@ -364,39 +267,19 @@ export default function Settings() {
                 Quick actions to test new detection features
               </p>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start border-yellow-500/30"
-                onClick={handleAddMissedCharges}
-              >
+              <Button variant="outline" size="sm" className="w-full justify-start border-yellow-500/30" onClick={handleAddMissedCharges}>
                 Add Soft Evidence (Missed Charges)
               </Button>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start border-primary/30"
-                onClick={handleAddHardEvidence}
-              >
+              <Button variant="outline" size="sm" className="w-full justify-start border-primary/30" onClick={handleAddHardEvidence}>
                 Add Hard Evidence (Cancellation)
               </Button>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start border-primary/30"
-                onClick={handleSetAmazonRenewal}
-              >
+              <Button variant="outline" size="sm" className="w-full justify-start border-primary/30" onClick={handleSetAmazonRenewal}>
                 Set Amazon 8-Day Renewal
               </Button>
               
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-start text-muted-foreground"
-                onClick={handleClearTestData}
-              >
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={handleClearTestData}>
                 Clear All Test Data
               </Button>
               
@@ -415,17 +298,11 @@ export default function Settings() {
         </div>
 
         {/* Logout */}
-        <Button
-          variant="gold-outline"
-          size="lg"
-          className="w-full mt-6"
-          onClick={handleLogout}
-        >
+        <Button variant="gold-outline" size="lg" className="w-full mt-6" onClick={handleLogout}>
           <LogOut size={20} />
           Logout
         </Button>
       </div>
       <BottomNav />
-    </MobileLayout>
-  );
+    </MobileLayout>;
 }
