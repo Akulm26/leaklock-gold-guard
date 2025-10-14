@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import EditSubscription from "./pages/EditSubscription";
 import LLMAssistant from "./pages/LLMAssistant";
+import N8nWebhooks from "./pages/N8nWebhooks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/edit-subscription/:id" element={<EditSubscription />} />
             <Route path="/llm-assistant" element={<LLMAssistant />} />
+            <Route path="/n8n-webhooks" element={<N8nWebhooks />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

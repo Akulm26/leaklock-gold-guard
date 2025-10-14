@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Shield, CreditCard, LogOut, ChevronRight, Bell, Calendar, MessageSquare, Code2 } from "lucide-react";
+import { User, Shield, CreditCard, LogOut, ChevronRight, Bell, Calendar, MessageSquare, Code2, Webhook } from "lucide-react";
 import { toast } from "sonner";
 export default function Settings() {
   const navigate = useNavigate();
@@ -160,6 +160,14 @@ export default function Settings() {
       label: "Manage Plans",
       value: null,
       action: () => navigate("/dashboard")
+    }]
+  }, {
+    title: "Automation",
+    items: [{
+      icon: Webhook,
+      label: "n8n Webhooks",
+      value: "Automate workflows",
+      action: () => navigate("/n8n-webhooks")
     }]
   }];
   return <MobileLayout>
