@@ -11,10 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function OTP() {
   const navigate = useNavigate();
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const inputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -37,12 +39,12 @@ export default function OTP() {
     setError(false);
 
     // Auto-focus next input
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs[index + 1].current?.focus();
     }
 
     // Auto-validate when all filled
-    if (index === 3 && value && newOtp.every((d) => d)) {
+    if (index === 5 && value && newOtp.every((d) => d)) {
       validateOtp(newOtp.join(""));
     }
   };
@@ -126,7 +128,7 @@ export default function OTP() {
        * - "Too many attempts": Rate limiting triggered
        */
       setError(true);
-      setOtp(["", "", "", ""]); // Clear all OTP inputs
+      setOtp(["", "", "", "", "", ""]); // Clear all OTP inputs
       inputRefs[0].current?.focus(); // Focus first input for retry
       toast.error(error.message || "Invalid OTP. Please try again.");
     } finally {
