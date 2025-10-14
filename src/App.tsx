@@ -13,6 +13,8 @@ import AddManual from "./pages/AddManual";
 import ConfirmDetected from "./pages/ConfirmDetected";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import EditSubscription from "./pages/EditSubscription";
+import LLMAssistant from "./pages/LLMAssistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/confirm-detected" element={<ConfirmDetected />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/edit-subscription/:id" element={<EditSubscription />} />
+          <Route path="/llm-assistant" element={<LLMAssistant />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -10,11 +10,29 @@ import { toast } from "sonner";
 
 interface Subscription {
   id: string;
-  name: string;
+  source: "auto" | "manual";
+  merchant_normalized: string;
+  plan_name: string;
   amount: number;
-  renewal: string;
-  source: string;
+  currency: string;
+  cycle: "monthly" | "quarterly" | "yearly" | "custom";
+  start_date: string;
+  next_renewal: string;
+  last_payment_date?: string;
+  status: "active" | "paused" | "canceled";
+  reminders: {
+    enabled: boolean;
+    per_item_Tn: number[];
+    per_item_daily_from_T: number | null;
+  };
+  savings_month_to_date: number;
+  savings_lifetime: number;
+  confidence?: number;
+  last_seen_at?: string;
   phone?: string;
+  // Legacy fields for backward compatibility
+  name?: string;
+  renewal?: string;
 }
 
 export default function Dashboard() {
@@ -50,33 +68,62 @@ export default function Dashboard() {
   };
 
   const totalAmount = subscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-  const nextRenewal = subscriptions.sort((a, b) => 
-    new Date(a.renewal).getTime() - new Date(b.renewal).getTime()
-  )[0];
+  const savingsThisMonth = subscriptions.reduce((sum, sub) => sum + (sub.savings_month_to_date || 0), 0);
+  const savingsLifetime = subscriptions.reduce((sum, sub) => sum + (sub.savings_lifetime || 0), 0);
+  
+  const nextRenewal = subscriptions
+    .filter(s => s.status === "active")
+    .sort((a, b) => 
+      new Date(a.next_renewal || a.renewal || "").getTime() - 
+      new Date(b.next_renewal || b.renewal || "").getTime()
+    )[0];
 
   const activeSubscriptions = subscriptions.filter(
-    (sub) => new Date(sub.renewal) >= new Date()
+    (sub) => sub.status === "active" && new Date(sub.next_renewal || sub.renewal || "") >= new Date()
+  );
+  const pausedSubscriptions = subscriptions.filter(
+    (sub) => sub.status === "paused"
   );
   const expiredSubscriptions = subscriptions.filter(
-    (sub) => new Date(sub.renewal) < new Date()
+    (sub) => sub.status === "canceled" || new Date(sub.next_renewal || sub.renewal || "") < new Date()
   );
 
   const renderSubscriptionCard = (sub: Subscription) => {
-    const renewal = formatDate(sub.renewal);
+    const displayName = sub.plan_name || sub.name || sub.merchant_normalized;
+    const renewalDate = sub.next_renewal || sub.renewal || "";
+    const renewal = formatDate(renewalDate);
     const isExpiring = renewal.color === "text-primary";
+    const hasReminders = sub.reminders?.enabled;
+    const hasSavings = (sub.savings_lifetime || 0) > 0;
+    
+    const statusColors = {
+      active: "bg-primary/20 text-primary",
+      paused: "bg-yellow-500/20 text-yellow-500",
+      canceled: "bg-destructive/20 text-destructive"
+    };
     
     return (
       <div key={sub.id} className={`glass-card rounded-xl p-4 animate-fade-in ${isExpiring ? "border-primary/50" : ""}`}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-lg">{sub.name}</h3>
-              {isExpiring && <Bell className="text-primary animate-pulse" size={16} />}
+              <h3 className="font-bold text-lg">{displayName}</h3>
+              {isExpiring && hasReminders && <Bell className="text-primary animate-pulse" size={16} />}
             </div>
             <p className="text-2xl font-bold text-primary">₹{sub.amount}</p>
+            {hasSavings && (
+              <p className="text-xs text-green-400 mt-1">
+                Saved ₹{sub.savings_lifetime} lifetime
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => navigate(`/edit-subscription/${sub.id}`)}
+            >
               <Edit size={16} />
             </Button>
             <Button
@@ -90,13 +137,19 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-sm gap-2">
           <span className={`font-medium ${renewal.color}`}>
-            Renews {renewal.text}
+            {sub.status === "active" ? `Renews ${renewal.text}` : 
+             sub.status === "paused" ? "Paused" : "Canceled"}
           </span>
-          <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">
-            {sub.source === "auto" ? "Auto" : "Manual"}
-          </span>
+          <div className="flex gap-2">
+            <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[sub.status]}`}>
+              {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+            </span>
+            <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">
+              {sub.source === "auto" ? "Auto" : "Manual"}
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -136,9 +189,17 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground mb-1">Next Renewal</p>
               {nextRenewal && (
                 <p className="text-2xl font-bold text-primary">
-                  {formatDate(nextRenewal.renewal).text}
+                  {formatDate(nextRenewal.next_renewal || nextRenewal.renewal || "").text}
                 </p>
               )}
+            </div>
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-sm text-muted-foreground mb-1">Savings This Month</p>
+              <p className="text-2xl font-bold text-green-400">₹{savingsThisMonth}</p>
+            </div>
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-sm text-muted-foreground mb-1">Lifetime Savings</p>
+              <p className="text-2xl font-bold text-green-400">₹{savingsLifetime}</p>
             </div>
           </div>
         )}
@@ -150,23 +211,33 @@ export default function Dashboard() {
               <div className="p-6 rounded-full bg-secondary/50">
                 <Plus className="text-muted-foreground" size={48} />
               </div>
-              <div>
-                <h3 className="font-bold text-lg mb-2">No subscriptions yet</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Auto-detect from SMS or add one manually to get started
-                </p>
-              </div>
-            </div>
+          <div>
+            <h3 className="font-bold text-lg mb-2">No subscriptions yet</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-4">
+              Auto-detect from SMS or add one manually to get started
+            </p>
+            <Button
+              variant="gold-outline"
+              size="sm"
+              onClick={() => navigate("/llm-assistant")}
+            >
+              Need help canceling a plan?
+            </Button>
+          </div>
+        </div>
           ) : (
             <Tabs defaultValue="all" className="h-full flex flex-col">
-              <TabsList className="w-full mb-4 glass-card">
-                <TabsTrigger value="all" className="flex-1">
+              <TabsList className="w-full mb-4 glass-card grid grid-cols-4">
+                <TabsTrigger value="all">
                   All ({subscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="active" className="flex-1">
+                <TabsTrigger value="active">
                   Active ({activeSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="expired" className="flex-1">
+                <TabsTrigger value="paused">
+                  Paused ({pausedSubscriptions.length})
+                </TabsTrigger>
+                <TabsTrigger value="expired">
                   Expired ({expiredSubscriptions.length})
                 </TabsTrigger>
               </TabsList>
@@ -182,6 +253,16 @@ export default function Dashboard() {
                   ) : (
                     <p className="text-center text-muted-foreground py-8">
                       No active subscriptions
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="paused" className="mt-0 space-y-3">
+                  {pausedSubscriptions.length > 0 ? (
+                    pausedSubscriptions.map(renderSubscriptionCard)
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      No paused subscriptions
                     </p>
                   )}
                 </TabsContent>
