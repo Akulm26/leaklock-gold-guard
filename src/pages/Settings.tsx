@@ -127,6 +127,8 @@ export default function Settings() {
     }
     return dates.join(", ");
   };
+  const [smsAccessEnabled, setSmsAccessEnabled] = useState(true);
+
   const settingSections = [{
     title: "Profile & Account",
     items: [{
@@ -146,7 +148,10 @@ export default function Settings() {
       icon: Shield,
       label: "SMS Access",
       value: "Granted",
-      action: () => toast.info("SMS permission is active")
+      toggle: true,
+      checked: smsAccessEnabled,
+      onToggle: setSmsAccessEnabled,
+      action: () => {}
     }]
   }, {
     title: "Subscriptions",
@@ -179,7 +184,7 @@ export default function Settings() {
                 {section.title}
               </h3>
               <div className="glass-card rounded-xl overflow-hidden">
-                {section.items.map((item, index) => <button key={item.label} onClick={item.action} className={`w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors ${index !== section.items.length - 1 ? "border-b border-border/50" : ""}`}>
+                {section.items.map((item: any, index) => <div key={item.label} className={`w-full p-4 flex items-center justify-between ${index !== section.items.length - 1 ? "border-b border-border/50" : ""}`}>
                     <div className="flex items-center gap-3">
                       <item.icon className="text-muted-foreground" size={20} />
                       <div className="text-left">
@@ -187,8 +192,14 @@ export default function Settings() {
                         {item.value && <p className="text-sm text-muted-foreground">{item.value}</p>}
                       </div>
                     </div>
-                    <ChevronRight className="text-muted-foreground" size={20} />
-                  </button>)}
+                    {item.toggle ? (
+                      <Switch checked={item.checked} onCheckedChange={item.onToggle} />
+                    ) : (
+                      <button onClick={item.action} className="hover:bg-secondary/30 transition-colors p-2 -m-2 rounded-lg">
+                        <ChevronRight className="text-muted-foreground" size={20} />
+                      </button>
+                    )}
+                  </div>)}
               </div>
             </div>)}
 
