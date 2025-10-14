@@ -11,6 +11,7 @@ import { StatusChangeSheet } from "@/components/StatusChangeSheet";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
 import { AmazonAssistantSheet } from "@/components/AmazonAssistantSheet";
 import { AmazonRenewalNudge } from "@/components/AmazonRenewalNudge";
+import { supabase } from "@/integrations/supabase/client";
 
 
 interface EvidenceEvent {
@@ -92,9 +93,7 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    loadSubscriptions();
-    checkForDetectedChanges();
-    checkPendingChanges();
+    loadSubscriptionsFromDatabase();
   }, []);
 
   const calculateSavings = (sub: any) => {
@@ -131,7 +130,7 @@ export default function Dashboard() {
     try {
       // Simulate SMS data sync
       await new Promise(resolve => setTimeout(resolve, 1500));
-      loadSubscriptions();
+      await loadSubscriptionsFromDatabase();
       toast.success("Subscriptions synced from SMS data");
     } catch (error) {
       toast.error("Failed to sync subscriptions");
@@ -140,54 +139,73 @@ export default function Dashboard() {
     }
   };
 
-  const loadSubscriptions = () => {
-    const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
-    // Migrate old subscriptions to new schema and calculate savings
-    const migratedSubs = subs.map((sub: any) => {
-      const savings = calculateSavings(sub);
-      return {
-        ...sub,
-        // Add default values for new fields if they don't exist
-        status: sub.status || "active",
-        status_changed_at: sub.status_changed_at || (sub.status !== "active" ? new Date().toISOString() : undefined),
-        merchant_normalized: sub.merchant_normalized || sub.name || "Unknown",
-        plan_name: sub.plan_name || sub.name || "Unknown",
-        currency: sub.currency || "INR",
-        cycle: sub.cycle || "monthly",
-        start_date: sub.start_date || new Date().toISOString(),
-        next_renewal: sub.next_renewal || sub.renewal || new Date().toISOString(),
-        reminders: sub.reminders || {
+  /**
+   * Load subscriptions from Supabase database
+   * 
+   * This replaces the old localStorage-based approach with database queries.
+   * Subscriptions are fetched from the subscriptions table based on user_id.
+   * The data is transformed to match the existing Subscription interface for compatibility.
+   */
+  const loadSubscriptionsFromDatabase = async () => {
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        console.error('Session error:', sessionError);
+        toast.error('Please sign in to view subscriptions');
+        navigate('/');
+        return;
+      }
+
+      console.log('Loading subscriptions from database...');
+      
+      // Fetch subscriptions from database using Supabase client
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', sessionData.session.user.id)
+        .order('next_billing_date', { ascending: true });
+
+      if (error) {
+        console.error('Error loading subscriptions:', error);
+        toast.error('Failed to load subscriptions');
+        return;
+      }
+
+      console.log('Loaded subscriptions:', data);
+
+      // Transform database subscriptions to match the UI Subscription interface
+      const transformedSubs: Subscription[] = (data || []).map((sub: any) => ({
+        id: sub.id,
+        source: "auto" as const,
+        merchant_normalized: sub.provider,
+        plan_name: sub.name,
+        amount: Number(sub.amount),
+        currency: sub.currency || "USD",
+        cycle: sub.billing_cycle as "monthly" | "quarterly" | "yearly" | "custom",
+        start_date: sub.created_at,
+        next_renewal: sub.next_billing_date,
+        status: sub.status as "active" | "paused" | "canceled",
+        reminders: {
           enabled: false,
           per_item_Tn: [],
           per_item_daily_from_T: null
         },
-        savings_month_to_date: savings.monthly,
-        savings_lifetime: savings.lifetime
-      };
-    });
-    setSubscriptions(migratedSubs);
-    // Save migrated data back to localStorage
-    localStorage.setItem("subscriptions", JSON.stringify(migratedSubs));
-  };
+        savings_month_to_date: 0,
+        savings_lifetime: 0,
+      }));
 
-  const checkForDetectedChanges = () => {
-    const subs: Subscription[] = JSON.parse(localStorage.getItem("subscriptions") || "[]");
-    const hardEvidence = subs.find(sub => 
-      sub.detected_change?.type === "hard" && sub.status === "active"
-    );
-    
-    if (hardEvidence && hardEvidence.detected_change) {
-      setDetectedChange({
-        subscriptionId: hardEvidence.id,
-        serviceName: hardEvidence.plan_name || hardEvidence.merchant_normalized,
-        detectedStatus: hardEvidence.detected_change.status,
-        evidence: hardEvidence.detected_change.evidence,
-      });
-      setSheetOpen(true);
+      setSubscriptions(transformedSubs);
+    } catch (err) {
+      console.error('Unexpected error loading subscriptions:', err);
+      toast.error('An unexpected error occurred');
     }
   };
 
-  const handleConfirmStatus = (subscriptionId: string, status: "canceled" | "paused") => {
+  // Note: Detection features are kept for future implementation
+  // Currently subscriptions are synced from database without detection flags
+
+  const handleConfirmStatus = async (subscriptionId: string, status: "canceled" | "paused") => {
     const updated = subscriptions.map(sub => {
       if (sub.id === subscriptionId) {
         return {
@@ -203,7 +221,7 @@ export default function Dashboard() {
     
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
-    loadSubscriptions();
+    await loadSubscriptionsFromDatabase();
     toast.success(`Subscription marked as ${status}`);
     setSheetOpen(false);
   };
@@ -236,7 +254,7 @@ export default function Dashboard() {
     setSheetOpen(true);
   };
 
-  const handleSoftEvidenceAction = (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
+  const handleSoftEvidenceAction = async (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
     const updated = subscriptions.map(sub => {
       if (sub.id === subscriptionId) {
         if (action === "keep") {
@@ -259,7 +277,7 @@ export default function Dashboard() {
     
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
-    loadSubscriptions();
+    await loadSubscriptionsFromDatabase();
     
     if (action !== "keep") {
       toast.success(`Subscription marked as ${action}`);

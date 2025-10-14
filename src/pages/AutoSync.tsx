@@ -5,12 +5,18 @@ import { Logo } from "@/components/Logo";
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
+/**
+ * Sync stages shown to the user during the auto-sync process
+ * These are displayed sequentially while the actual sync happens in the background
+ */
 const SYNC_STAGES = [
-  { label: "Syncing messages locally", duration: 1500 },
+  { label: "Connecting to your account", duration: 1500 },
   { label: "Scanning for subscriptions", duration: 2000 },
-  { label: "Extracting app, amount, renewal", duration: 1800 },
-  { label: "Normalizing and saving", duration: 1200 },
+  { label: "Analyzing subscription patterns", duration: 1800 },
+  { label: "Finalizing results", duration: 1200 },
 ];
 
 export default function AutoSync() {
@@ -18,44 +24,93 @@ export default function AutoSync() {
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [subscriptionCount, setSubscriptionCount] = useState(0);
 
   useEffect(() => {
-    if (currentStage < SYNC_STAGES.length) {
-      const stageDuration = SYNC_STAGES[currentStage].duration;
-      const steps = 50;
-      const stepDuration = stageDuration / steps;
-
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            return 100;
-          }
-          return prev + (100 / steps);
-        });
-      }, stepDuration);
-
-      const timeout = setTimeout(() => {
-        if (currentStage < SYNC_STAGES.length - 1) {
-          setCurrentStage((prev) => prev + 1);
-          setProgress(0);
-        } else {
-          setIsComplete(true);
-          // Store mock detected subscriptions
-          const mockSubscriptions = [
-            { id: "1", name: "Netflix", amount: 649, renewal: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), source: "auto" },
-            { id: "2", name: "Spotify", amount: 119, renewal: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(), source: "auto" },
-            { id: "3", name: "Amazon Prime", amount: 1499, renewal: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(), source: "auto" },
-          ];
-          localStorage.setItem("detectedSubscriptions", JSON.stringify(mockSubscriptions));
+    /**
+     * Auto-sync process using Supabase
+     * 
+     * This effect:
+     * 1. Simulates UI progress through sync stages
+     * 2. Calls the sync-subscriptions edge function to:
+     *    - Fetch subscription templates from database
+     *    - Randomly generate 6-9 subscriptions for the user
+     *    - Store them in the subscriptions table
+     * 3. Handles success/error states and navigation
+     */
+    const performSync = async () => {
+      try {
+        // Get the current session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !sessionData.session) {
+          console.error('Session error:', sessionError);
+          setError('Authentication required. Please sign in again.');
+          toast.error('Authentication required');
+          navigate('/');
+          return;
         }
-      }, stageDuration);
 
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [currentStage]);
+        // Start UI progress animation
+        const totalDuration = SYNC_STAGES.reduce((sum, stage) => sum + stage.duration, 0);
+        let elapsedTime = 0;
+
+        const progressInterval = setInterval(() => {
+          elapsedTime += 100;
+          const newProgress = Math.min((elapsedTime / totalDuration) * 95, 95);
+          setProgress(newProgress);
+
+          // Update current stage based on elapsed time
+          let cumulativeDuration = 0;
+          for (let i = 0; i < SYNC_STAGES.length; i++) {
+            cumulativeDuration += SYNC_STAGES[i].duration;
+            if (elapsedTime < cumulativeDuration) {
+              setCurrentStage(i);
+              break;
+            }
+          }
+        }, 100);
+
+        // Call the sync-subscriptions edge function
+        // This creates 6-9 random subscriptions from templates in the database
+        console.log('Calling sync-subscriptions function...');
+        const { data, error: functionError } = await supabase.functions.invoke(
+          'sync-subscriptions',
+          {
+            headers: {
+              Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+          }
+        );
+
+        clearInterval(progressInterval);
+
+        if (functionError) {
+          console.error('Error syncing subscriptions:', functionError);
+          setError(functionError.message || 'Failed to sync subscriptions');
+          toast.error('Sync failed. Please try again.');
+          return;
+        }
+
+        console.log('Sync successful:', data);
+        
+        // Update UI with success state
+        setProgress(100);
+        setSubscriptionCount(data?.subscriptions?.length || 0);
+        setIsComplete(true);
+
+        toast.success(`Successfully synced ${data?.subscriptions?.length || 0} subscriptions`);
+
+      } catch (err) {
+        console.error('Unexpected error during sync:', err);
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+        toast.error('Sync failed. Please try again.');
+      }
+    };
+
+    performSync();
+  }, [navigate]);
 
   return (
     <MobileLayout>
@@ -70,7 +125,13 @@ export default function AutoSync() {
         <div className="flex-1 flex flex-col justify-center space-y-12">
           {/* Scanning Animation */}
           <div className="flex justify-center">
-            {isComplete ? (
+            {error ? (
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <span className="text-5xl">⚠️</span>
+                </div>
+              </div>
+            ) : isComplete ? (
               <div className="relative">
                 <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center animate-scale-in gold-glow">
                   <Check className="text-primary" size={64} strokeWidth={3} />
@@ -88,18 +149,25 @@ export default function AutoSync() {
 
           {/* Status */}
           <div className="space-y-6">
-            {isComplete ? (
+            {error ? (
               <div className="text-center space-y-4 animate-fade-in">
-                <h2 className="text-2xl font-bold">Scan Complete</h2>
+                <h2 className="text-2xl font-bold text-destructive">Sync Failed</h2>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+            ) : isComplete ? (
+              <div className="text-center space-y-4 animate-fade-in">
+                <h2 className="text-2xl font-bold">Sync Complete</h2>
                 <div className="glass-card rounded-xl p-4 inline-block">
-                  <p className="text-3xl font-bold text-primary">3 subscriptions found</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {subscriptionCount} subscription{subscriptionCount !== 1 ? 's' : ''} synced
+                  </p>
                 </div>
               </div>
             ) : (
               <>
                 <div className="space-y-2">
                   <p className="text-lg font-semibold text-center">
-                    {SYNC_STAGES[currentStage].label}...
+                    {SYNC_STAGES[currentStage]?.label}...
                   </p>
                   <div className="h-2 bg-border/30 rounded-full overflow-hidden">
                     <div
@@ -130,16 +198,25 @@ export default function AutoSync() {
         </div>
 
         {/* CTA */}
-        {isComplete && (
+        {error ? (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full animate-fade-in"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        ) : isComplete ? (
           <Button
             variant="gold"
             size="lg"
             className="w-full animate-fade-in"
-            onClick={() => navigate("/confirm-detected")}
+            onClick={() => navigate("/dashboard")}
           >
-            Review Detected Plans
+            View Subscriptions
           </Button>
-        )}
+        ) : null}
       </div>
     </MobileLayout>
   );

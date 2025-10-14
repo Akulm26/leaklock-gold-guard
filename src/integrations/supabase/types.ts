@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_templates: {
+        Row: {
+          amount_max: number
+          amount_min: number
+          billing_cycle: string
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          name: string
+          provider: string
+        }
+        Insert: {
+          amount_max: number
+          amount_min: number
+          billing_cycle: string
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          name: string
+          provider: string
+        }
+        Update: {
+          amount_max?: number
+          amount_min?: number
+          billing_cycle?: string
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          name?: string
+          provider?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount: number
