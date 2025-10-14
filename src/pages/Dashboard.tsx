@@ -46,7 +46,28 @@ export default function Dashboard() {
 
   const loadSubscriptions = () => {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
-    setSubscriptions(subs);
+    // Migrate old subscriptions to new schema
+    const migratedSubs = subs.map((sub: any) => ({
+      ...sub,
+      // Add default values for new fields if they don't exist
+      status: sub.status || "active",
+      merchant_normalized: sub.merchant_normalized || sub.name || "Unknown",
+      plan_name: sub.plan_name || sub.name || "Unknown",
+      currency: sub.currency || "INR",
+      cycle: sub.cycle || "monthly",
+      start_date: sub.start_date || new Date().toISOString(),
+      next_renewal: sub.next_renewal || sub.renewal || new Date().toISOString(),
+      reminders: sub.reminders || {
+        enabled: false,
+        per_item_Tn: [],
+        per_item_daily_from_T: null
+      },
+      savings_month_to_date: sub.savings_month_to_date || 0,
+      savings_lifetime: sub.savings_lifetime || 0
+    }));
+    setSubscriptions(migratedSubs);
+    // Save migrated data back to localStorage
+    localStorage.setItem("subscriptions", JSON.stringify(migratedSubs));
   };
 
   const handleDelete = (id: string) => {
