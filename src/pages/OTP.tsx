@@ -202,7 +202,7 @@ export default function OTP() {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className={`w-16 h-16 text-center text-2xl font-bold glass-card border-2 ${
+                className={`w-10 h-10 text-center text-xl font-bold glass-card border-2 ${
                   error ? "border-destructive animate-shake" : "border-border/50 focus:border-primary"
                 } transition-all`}
                 disabled={isValidating}
