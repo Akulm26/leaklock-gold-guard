@@ -19,7 +19,6 @@ export default function OTP() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
   ];
 
   const phone = localStorage.getItem("phone");
