@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Bell, Settings, Edit, Trash2, MessageCircle } from "lucide-react";
+import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { StatusChangeSheet } from "@/components/StatusChangeSheet";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
@@ -178,7 +178,7 @@ export default function Dashboard() {
           ...sub,
           status,
           status_changed_at: new Date().toISOString(),
-          detected_change: undefined, // Clear the detection
+          detected_change: undefined,
           watch_flag: false,
         };
       }
@@ -187,8 +187,9 @@ export default function Dashboard() {
     
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
-    loadSubscriptions(); // Recalculate savings
+    loadSubscriptions();
     toast.success(`Subscription marked as ${status}`);
+    setSheetOpen(false);
   };
 
   const handleNotSure = (subscriptionId: string) => {
@@ -196,8 +197,8 @@ export default function Dashboard() {
       if (sub.id === subscriptionId) {
         return {
           ...sub,
-          watch_flag: true, // Set watch flag for future checks
-          detected_change: undefined, // Clear the detection but keep active
+          watch_flag: true,
+          detected_change: undefined,
         };
       }
       return sub;
@@ -206,6 +207,17 @@ export default function Dashboard() {
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
     toast.info("Marked for monitoring. We'll check again next cycle.");
+    setSheetOpen(false);
+  };
+
+  const handleOpenStatusChange = (sub: Subscription) => {
+    setDetectedChange({
+      subscriptionId: sub.id,
+      serviceName: sub.plan_name || sub.merchant_normalized,
+      detectedStatus: sub.status === "canceled" ? "canceled" : "paused",
+      evidence: sub.detected_change?.evidence || "Manual status check"
+    });
+    setSheetOpen(true);
   };
 
   const handleSoftEvidenceAction = (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
@@ -441,6 +453,15 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => handleOpenStatusChange(sub)}
+              title="Update status"
+            >
+              <Info size={16} />
+            </Button>
             <Button 
               variant="ghost" 
               size="icon" 
