@@ -27,6 +27,7 @@ interface Subscription {
   next_renewal: string;
   last_payment_date?: string;
   status: "active" | "paused" | "canceled";
+  status_changed_at?: string;
   reminders: {
     enabled: boolean;
     per_item_Tn: number[];
@@ -45,6 +46,7 @@ export default function EditSubscription() {
   const [amount, setAmount] = useState("");
   const [cycle, setCycle] = useState<"monthly" | "quarterly" | "yearly" | "custom">("monthly");
   const [renewalDate, setRenewalDate] = useState<Date>();
+  const [status, setStatus] = useState<"active" | "paused" | "canceled">("active");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [selectedDays, setSelectedDays] = useState<number[]>([3]);
   const [dailyFromT, setDailyFromT] = useState<string>("none");
@@ -57,6 +59,7 @@ export default function EditSubscription() {
       setName(found.plan_name || found.merchant_normalized);
       setAmount(found.amount.toString());
       setCycle(found.cycle);
+      setStatus(found.status);
       setRenewalDate(new Date(found.next_renewal));
       setRemindersEnabled(found.reminders?.enabled || false);
       setSelectedDays(found.reminders?.per_item_Tn || [3]);
@@ -76,12 +79,15 @@ export default function EditSubscription() {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
     const updated = subs.map((s: Subscription) => {
       if (s.id === id) {
+        const statusChanged = s.status !== status;
         return {
           ...s,
           plan_name: name,
           merchant_normalized: name,
           amount: parseFloat(amount),
           cycle,
+          status,
+          status_changed_at: statusChanged ? new Date().toISOString() : s.status_changed_at,
           next_renewal: renewalDate.toISOString(),
           reminders: {
             enabled: remindersEnabled,
@@ -145,6 +151,20 @@ export default function EditSubscription() {
                   <SelectItem value="quarterly">Quarterly</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>
                   <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                <SelectTrigger className="glass-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="canceled">Canceled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

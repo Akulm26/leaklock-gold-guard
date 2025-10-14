@@ -21,6 +21,7 @@ interface Subscription {
   next_renewal: string;
   last_payment_date?: string;
   status: "active" | "paused" | "canceled";
+  status_changed_at?: string; // Track when status changed to paused/canceled
   reminders: {
     enabled: boolean;
     per_item_Tn: number[];
@@ -46,27 +47,60 @@ export default function Dashboard() {
     loadSubscriptions();
   }, []);
 
+  const calculateSavings = (sub: any) => {
+    // Only calculate savings for paused or canceled subscriptions
+    if (sub.status !== "paused" && sub.status !== "canceled") {
+      return { monthly: 0, lifetime: 0 };
+    }
+
+    const statusChangedAt = sub.status_changed_at ? new Date(sub.status_changed_at) : new Date();
+    const now = new Date();
+    
+    // Calculate months elapsed since status change
+    const monthsElapsed = (now.getFullYear() - statusChangedAt.getFullYear()) * 12 + 
+                         (now.getMonth() - statusChangedAt.getMonth());
+    
+    // Calculate monthly cost based on cycle
+    let monthlyCost = sub.amount;
+    if (sub.cycle === "yearly") monthlyCost = sub.amount / 12;
+    else if (sub.cycle === "quarterly") monthlyCost = sub.amount / 3;
+    
+    // Lifetime savings = monthly cost × months elapsed
+    const lifetimeSavings = Math.max(0, Math.round(monthlyCost * monthsElapsed));
+    
+    // Monthly savings = monthly cost if in current month, 0 otherwise
+    const isCurrentMonth = statusChangedAt.getMonth() === now.getMonth() && 
+                          statusChangedAt.getFullYear() === now.getFullYear();
+    const monthlySavings = isCurrentMonth ? Math.round(monthlyCost) : 0;
+    
+    return { monthly: monthlySavings, lifetime: lifetimeSavings };
+  };
+
   const loadSubscriptions = () => {
     const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
-    // Migrate old subscriptions to new schema
-    const migratedSubs = subs.map((sub: any) => ({
-      ...sub,
-      // Add default values for new fields if they don't exist
-      status: sub.status || "active",
-      merchant_normalized: sub.merchant_normalized || sub.name || "Unknown",
-      plan_name: sub.plan_name || sub.name || "Unknown",
-      currency: sub.currency || "INR",
-      cycle: sub.cycle || "monthly",
-      start_date: sub.start_date || new Date().toISOString(),
-      next_renewal: sub.next_renewal || sub.renewal || new Date().toISOString(),
-      reminders: sub.reminders || {
-        enabled: false,
-        per_item_Tn: [],
-        per_item_daily_from_T: null
-      },
-      savings_month_to_date: sub.savings_month_to_date || 0,
-      savings_lifetime: sub.savings_lifetime || 0
-    }));
+    // Migrate old subscriptions to new schema and calculate savings
+    const migratedSubs = subs.map((sub: any) => {
+      const savings = calculateSavings(sub);
+      return {
+        ...sub,
+        // Add default values for new fields if they don't exist
+        status: sub.status || "active",
+        status_changed_at: sub.status_changed_at || (sub.status !== "active" ? new Date().toISOString() : undefined),
+        merchant_normalized: sub.merchant_normalized || sub.name || "Unknown",
+        plan_name: sub.plan_name || sub.name || "Unknown",
+        currency: sub.currency || "INR",
+        cycle: sub.cycle || "monthly",
+        start_date: sub.start_date || new Date().toISOString(),
+        next_renewal: sub.next_renewal || sub.renewal || new Date().toISOString(),
+        reminders: sub.reminders || {
+          enabled: false,
+          per_item_Tn: [],
+          per_item_daily_from_T: null
+        },
+        savings_month_to_date: savings.monthly,
+        savings_lifetime: savings.lifetime
+      };
+    });
     setSubscriptions(migratedSubs);
     // Save migrated data back to localStorage
     localStorage.setItem("subscriptions", JSON.stringify(migratedSubs));
