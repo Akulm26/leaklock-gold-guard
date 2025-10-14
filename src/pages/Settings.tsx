@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Shield, CreditCard, LogOut, ChevronRight, Bell, Calendar, MessageSquare } from "lucide-react";
+import { User, Shield, CreditCard, LogOut, ChevronRight, Bell, Calendar, MessageSquare, Code2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -72,6 +72,71 @@ export default function Settings() {
     toast.success("SMS scan started...");
     // Simulate scan
     setTimeout(() => toast.success("Scan completed."), 2000);
+  };
+
+  // Developer Testing Functions
+  const handleAddMissedCharges = () => {
+    const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    if (subs.length === 0) {
+      toast.error("No subscriptions found");
+      return;
+    }
+    subs[0].missed_charges = 2;
+    localStorage.setItem("subscriptions", JSON.stringify(subs));
+    toast.success("Added missed_charges to first subscription. Reload dashboard to see banner.");
+  };
+
+  const handleAddHardEvidence = () => {
+    const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    if (subs.length === 0) {
+      toast.error("No subscriptions found");
+      return;
+    }
+    subs[0].detected_change = {
+      type: "hard",
+      status: "canceled",
+      evidence: "SMS: 'Auto-renew turned off'",
+      detected_at: new Date().toISOString()
+    };
+    subs[0].evidence_events = [
+      {
+        type: "sms",
+        confidence: "high",
+        at: new Date().toISOString(),
+        note: "Auto-renew turned off"
+      }
+    ];
+    localStorage.setItem("subscriptions", JSON.stringify(subs));
+    toast.success("Added hard evidence to first subscription. Reload dashboard to see sheet.");
+  };
+
+  const handleSetAmazonRenewal = () => {
+    const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    if (subs.length === 0) {
+      toast.error("No subscriptions found");
+      return;
+    }
+    const renewalDate = new Date();
+    renewalDate.setDate(renewalDate.getDate() + 8); // 8 days from now
+    subs[0].merchant_normalized = "Amazon Subscribe & Save";
+    subs[0].next_renewal = renewalDate.toISOString();
+    localStorage.setItem("subscriptions", JSON.stringify(subs));
+    toast.success("Set first subscription as Amazon with 8-day renewal. Reload dashboard.");
+  };
+
+  const handleClearTestData = () => {
+    const subs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    const cleaned = subs.map((sub: any) => ({
+      ...sub,
+      missed_charges: 0,
+      detected_change: undefined,
+      evidence_events: undefined,
+      pending_change: undefined,
+      intended_action: "none",
+      status_watch: undefined
+    }));
+    localStorage.setItem("subscriptions", JSON.stringify(cleaned));
+    toast.success("Cleared all test data from subscriptions.");
   };
 
   const getNextScanDates = () => {
@@ -285,6 +350,59 @@ export default function Settings() {
                   Scan Now
                 </Button>
               </div>
+            </div>
+          </div>
+
+          {/* Developer Testing */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Code2 size={16} />
+              Developer Testing
+            </h3>
+            <div className="glass-card rounded-xl p-4 space-y-3">
+              <p className="text-xs text-muted-foreground mb-3">
+                Quick actions to test new detection features
+              </p>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start border-yellow-500/30"
+                onClick={handleAddMissedCharges}
+              >
+                Add Soft Evidence (Missed Charges)
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start border-primary/30"
+                onClick={handleAddHardEvidence}
+              >
+                Add Hard Evidence (Cancellation)
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start border-primary/30"
+                onClick={handleSetAmazonRenewal}
+              >
+                Set Amazon 8-Day Renewal
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-start text-muted-foreground"
+                onClick={handleClearTestData}
+              >
+                Clear All Test Data
+              </Button>
+              
+              <p className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+                Note: After using test actions, reload the Dashboard to see changes.
+              </p>
             </div>
           </div>
 
