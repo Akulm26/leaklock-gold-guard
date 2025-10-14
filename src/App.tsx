@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,33 +18,42 @@ import EditSubscription from "./pages/EditSubscription";
 import LLMAssistant from "./pages/LLMAssistant";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      retry: 1,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/otp" element={<OTP />} />
-          <Route path="/profile-setup" element={<ProfileSetup />} />
-          <Route path="/action-select" element={<ActionSelect />} />
-          <Route path="/sms-permission" element={<SmsPermission />} />
-          <Route path="/auto-sync" element={<AutoSync />} />
-          <Route path="/add-manual" element={<AddManual />} />
-          <Route path="/confirm-detected" element={<ConfirmDetected />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/edit-subscription/:id" element={<EditSubscription />} />
-          <Route path="/llm-assistant" element={<LLMAssistant />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/otp" element={<OTP />} />
+            <Route path="/profile-setup" element={<ProfileSetup />} />
+            <Route path="/action-select" element={<ActionSelect />} />
+            <Route path="/sms-permission" element={<SmsPermission />} />
+            <Route path="/auto-sync" element={<AutoSync />} />
+            <Route path="/add-manual" element={<AddManual />} />
+            <Route path="/confirm-detected" element={<ConfirmDetected />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/edit-subscription/:id" element={<EditSubscription />} />
+            <Route path="/llm-assistant" element={<LLMAssistant />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
