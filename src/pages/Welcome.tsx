@@ -5,15 +5,48 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Phone } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Welcome() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [phone, setPhone] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (phone.length >= 10) {
-      localStorage.setItem("phone", phone);
+  const handleContinue = async () => {
+    if (phone.length < 10) return;
+    
+    setIsLoading(true);
+    
+    // Format phone number to E.164 format (+91XXXXXXXXXX)
+    const formattedPhone = `+91${phone}`;
+    
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+
+      if (error) throw error;
+
+      // Store phone for OTP verification page
+      localStorage.setItem("phone", formattedPhone);
+      
+      toast({
+        title: "OTP Sent",
+        description: "Please check your phone for the verification code.",
+      });
+      
       navigate("/otp");
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send OTP. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,9 +91,9 @@ export default function Welcome() {
             size="lg"
             className="w-full"
             onClick={handleContinue}
-            disabled={phone.length < 10}
+            disabled={phone.length < 10 || isLoading}
           >
-            Continue
+            {isLoading ? "Sending OTP..." : "Continue"}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">

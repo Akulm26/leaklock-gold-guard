@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function OTP() {
   const navigate = useNavigate();
@@ -53,30 +54,61 @@ export default function OTP() {
   };
 
   const validateOtp = async (otpValue: string) => {
+    if (!phone) {
+      toast.error("Phone number not found. Please start over.");
+      navigate("/");
+      return;
+    }
+
     setIsValidating(true);
     
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token: otpValue,
+        type: 'sms'
+      });
 
-    if (otpValue === "1234") {
-      toast.success("OTP verified.");
-      
-      // Simulate checking if user exists
-      const isNewUser = !localStorage.getItem("userName");
-      
-      if (isNewUser) {
-        navigate("/profile-setup");
-      } else {
-        navigate("/dashboard");
+      if (error) throw error;
+
+      if (data.user) {
+        toast.success("OTP verified successfully!");
+        
+        // Check if user profile exists
+        const isNewUser = !localStorage.getItem("userName");
+        
+        if (isNewUser) {
+          navigate("/profile-setup");
+        } else {
+          navigate("/dashboard");
+        }
       }
-    } else {
+    } catch (error: any) {
+      console.error("OTP verification error:", error);
       setError(true);
       setOtp(["", "", "", ""]);
       inputRefs[0].current?.focus();
-      toast.error("Invalid OTP. Try again.");
+      toast.error(error.message || "Invalid OTP. Please try again.");
+    } finally {
+      setIsValidating(false);
     }
+  };
+
+  const handleResendOtp = async () => {
+    if (!phone) return;
     
-    setIsValidating(false);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
+      });
+
+      if (error) throw error;
+      
+      toast.success("OTP resent successfully!");
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      toast.error(error.message || "Failed to resend OTP. Please try again.");
+    }
   };
 
   return (
@@ -137,10 +169,10 @@ export default function OTP() {
           )}
 
           <div className="flex flex-col items-center gap-3 pt-6">
-            <Button variant="text" onClick={() => toast.info("OTP resent")}>
+            <Button variant="text" onClick={handleResendOtp} disabled={isValidating}>
               Resend OTP
             </Button>
-            <Button variant="text" onClick={() => navigate(-1)}>
+            <Button variant="text" onClick={() => navigate(-1)} disabled={isValidating}>
               Change number
             </Button>
           </div>
