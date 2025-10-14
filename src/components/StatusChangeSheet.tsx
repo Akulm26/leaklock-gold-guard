@@ -13,6 +13,12 @@ interface DetectedChange {
   serviceName: string;
   detectedStatus: "canceled" | "paused";
   evidence: string;
+  evidenceEvents?: Array<{
+    type: "sms" | "email" | "no_debit" | "app_notification";
+    confidence: "high" | "med";
+    at: string;
+    note?: string;
+  }>;
 }
 
 interface StatusChangeSheetProps {
@@ -65,7 +71,20 @@ export function StatusChangeSheet({
               </SheetDescription>
             </div>
           </div>
-          {detectedChange.evidence && (
+          {detectedChange.evidenceEvents && detectedChange.evidenceEvents.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">What we found</p>
+              <div className="flex flex-wrap gap-2">
+                {detectedChange.evidenceEvents.map((event, idx) => (
+                  <div key={idx} className="px-3 py-1.5 rounded-lg bg-muted/50 text-xs">
+                    <span className="font-medium text-foreground">{event.type.toUpperCase()}</span>
+                    {event.note && <span className="text-muted-foreground">: {event.note}</span>}
+                    <span className="text-muted-foreground ml-1">• {new Date(event.at).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : detectedChange.evidence && (
             <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
               {detectedChange.evidence}
             </div>

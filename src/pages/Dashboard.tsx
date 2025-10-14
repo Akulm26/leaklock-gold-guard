@@ -9,7 +9,16 @@ import { Plus, Bell, Settings, Edit, Trash2, MessageCircle } from "lucide-react"
 import { toast } from "sonner";
 import { StatusChangeSheet } from "@/components/StatusChangeSheet";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
+import { AmazonAssistantSheet } from "@/components/AmazonAssistantSheet";
+import { AmazonRenewalNudge } from "@/components/AmazonRenewalNudge";
 
+
+interface EvidenceEvent {
+  type: "sms" | "email" | "no_debit" | "app_notification";
+  confidence: "high" | "med";
+  at: string;
+  note?: string;
+}
 
 interface Subscription {
   id: string;
@@ -23,7 +32,7 @@ interface Subscription {
   next_renewal: string;
   last_payment_date?: string;
   status: "active" | "paused" | "canceled";
-  status_changed_at?: string; // Track when status changed to paused/canceled
+  status_changed_at?: string;
   reminders: {
     enabled: boolean;
     per_item_Tn: number[];
@@ -41,9 +50,22 @@ interface Subscription {
     evidence: string;
     detected_at: string;
   };
-  watch_flag?: boolean; // Set when user clicks "Not sure"
-  missed_charges?: number; // Count of missed charge cycles
-  // Legacy fields for backward compatibility
+  watch_flag?: boolean;
+  missed_charges?: number;
+  // New fields for external detection
+  evidence_events?: EvidenceEvent[];
+  status_watch?: {
+    suspected_change: boolean;
+    since?: string;
+  };
+  intended_action?: "none" | "skip_this_cycle" | "pause_n_cycles" | "cancel";
+  pending_change?: {
+    enabled: boolean;
+    action: string;
+    for_cycle_date?: string;
+  };
+  grace_days?: number;
+  // Legacy fields
   name?: string;
   renewal?: string;
 }
@@ -60,10 +82,17 @@ export default function Dashboard() {
     evidence: string;
   } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [amazonAssistant, setAmazonAssistant] = useState<{
+    subscriptionId: string;
+    subscriptionName: string;
+    action: "skip" | "pause" | "cancel";
+  } | null>(null);
+  const [amazonSheetOpen, setAmazonSheetOpen] = useState(false);
 
   useEffect(() => {
     loadSubscriptions();
     checkForDetectedChanges();
+    checkPendingChanges();
   }, []);
 
   const calculateSavings = (sub: any) => {
@@ -185,7 +214,8 @@ export default function Dashboard() {
         if (action === "keep") {
           return {
             ...sub,
-            missed_charges: 0, // Reset missed charges
+            missed_charges: 0,
+            status_watch: { suspected_change: false }
           };
         }
         return {
@@ -193,6 +223,7 @@ export default function Dashboard() {
           status: action,
           status_changed_at: new Date().toISOString(),
           missed_charges: 0,
+          status_watch: { suspected_change: false }
         };
       }
       return sub;
@@ -200,13 +231,138 @@ export default function Dashboard() {
     
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
-    loadSubscriptions(); // Recalculate savings
+    loadSubscriptions();
     
     if (action !== "keep") {
       toast.success(`Subscription marked as ${action}`);
     } else {
       toast.info("Subscription kept active");
     }
+  };
+
+  const checkPendingChanges = () => {
+    const subs: Subscription[] = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+    const now = new Date();
+    
+    subs.forEach(sub => {
+      if (sub.pending_change?.enabled && sub.pending_change.for_cycle_date) {
+        const cycleDate = new Date(sub.pending_change.for_cycle_date);
+        const graceDays = sub.grace_days || 3;
+        const verificationDate = new Date(cycleDate);
+        verificationDate.setDate(verificationDate.getDate() + graceDays);
+        
+        if (now >= verificationDate) {
+          // Check if debit occurred (simulated - in production check transactions)
+          const debitOccurred = Math.random() > 0.5; // Mock
+          
+          if (!debitOccurred) {
+            // Action confirmed
+            const action = sub.pending_change.action;
+            handlePendingVerified(sub.id, action);
+          } else {
+            // Action failed
+            handlePendingFailed(sub.id);
+          }
+        }
+      }
+    });
+  };
+
+  const handlePendingVerified = (subscriptionId: string, action: string) => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        const savings = calculateSavings({ ...sub, status: "paused" });
+        return {
+          ...sub,
+          pending_change: { enabled: false, action: "none" },
+          savings_lifetime: (sub.savings_lifetime || 0) + sub.amount
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.success(`${action} confirmed — ₹${subscriptions.find(s => s.id === subscriptionId)?.amount} saved.`);
+  };
+
+  const handlePendingFailed = (subscriptionId: string) => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        return {
+          ...sub,
+          pending_change: { enabled: false, action: "none" }
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    toast.error("Charge detected — skip didn't complete.");
+  };
+
+  const handleAmazonAction = (subscriptionId: string, action: "skip" | "pause" | "cancel") => {
+    const sub = subscriptions.find(s => s.id === subscriptionId);
+    if (!sub) return;
+    
+    setAmazonAssistant({
+      subscriptionId,
+      subscriptionName: sub.plan_name || sub.merchant_normalized,
+      action
+    });
+    setAmazonSheetOpen(true);
+  };
+
+  const handleAmazonComplete = () => {
+    if (!amazonAssistant) return;
+    
+    const updated = subscriptions.map(sub => {
+      if (sub.id === amazonAssistant.subscriptionId) {
+        const actionMap = {
+          skip: "skip_this_cycle" as const,
+          pause: "pause_n_cycles" as const,
+          cancel: "cancel" as const
+        };
+        const mappedAction = actionMap[amazonAssistant.action];
+        
+        return {
+          ...sub,
+          pending_change: {
+            enabled: true,
+            action: mappedAction,
+            for_cycle_date: sub.next_renewal
+          },
+          intended_action: mappedAction
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    
+    const graceDays = 3;
+    const verifyDate = new Date(updated.find(s => s.id === amazonAssistant.subscriptionId)?.next_renewal || "");
+    verifyDate.setDate(verifyDate.getDate() + graceDays);
+    
+    toast.info(`We'll verify after ${verifyDate.toLocaleDateString()}.`);
+    setAmazonSheetOpen(false);
+  };
+
+  const handleAmazonKeep = (subscriptionId: string) => {
+    const updated = subscriptions.map(sub => {
+      if (sub.id === subscriptionId) {
+        return {
+          ...sub,
+          intended_action: "none" as const
+        };
+      }
+      return sub;
+    });
+    
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
   };
 
   const handleDelete = (id: string) => {
@@ -257,6 +413,11 @@ export default function Dashboard() {
     const hasReminders = sub.reminders?.enabled;
     const hasSavings = (sub.savings_lifetime || 0) > 0;
     const showSoftEvidence = sub.status === "active" && (sub.missed_charges || 0) >= 2;
+    
+    // Check if Amazon subscription needs proactive nudge (7-10 days before renewal)
+    const isAmazon = sub.merchant_normalized.toLowerCase().includes("amazon");
+    const daysUntilRenewal = Math.ceil((new Date(renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const showAmazonNudge = isAmazon && sub.status === "active" && daysUntilRenewal >= 7 && daysUntilRenewal <= 10;
     
     const statusColors = {
       active: "bg-primary/20 text-primary",
@@ -321,6 +482,18 @@ export default function Dashboard() {
             onMarkPaused={() => handleSoftEvidenceAction(sub.id, "paused")}
             onMarkCanceled={() => handleSoftEvidenceAction(sub.id, "canceled")}
             onKeepActive={() => handleSoftEvidenceAction(sub.id, "keep")}
+          />
+        )}
+
+        {/* Amazon Renewal Nudge */}
+        {showAmazonNudge && (
+          <AmazonRenewalNudge
+            itemName={displayName}
+            renewalDate={renewalDate}
+            onSkip={() => handleAmazonAction(sub.id, "skip")}
+            onPause={() => handleAmazonAction(sub.id, "pause")}
+            onCancel={() => handleAmazonAction(sub.id, "cancel")}
+            onKeep={() => handleAmazonKeep(sub.id)}
           />
         )}
       </div>
@@ -473,6 +646,17 @@ export default function Dashboard() {
         onNotSure={handleNotSure}
         onClose={() => setSheetOpen(false)}
       />
+
+      {/* Amazon Assistant Sheet */}
+      {amazonAssistant && (
+        <AmazonAssistantSheet
+          open={amazonSheetOpen}
+          subscriptionName={amazonAssistant.subscriptionName}
+          action={amazonAssistant.action}
+          onComplete={handleAmazonComplete}
+          onClose={() => setAmazonSheetOpen(false)}
+        />
+      )}
       
       <BottomNav />
     </MobileLayout>
