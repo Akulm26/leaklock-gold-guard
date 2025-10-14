@@ -65,6 +65,7 @@ interface Subscription {
     for_cycle_date?: string;
   };
   grace_days?: number;
+  amazon_nudge_dismissed?: boolean;
   // Legacy fields
   name?: string;
   renewal?: string;
@@ -318,6 +319,13 @@ export default function Dashboard() {
     const sub = subscriptions.find(s => s.id === subscriptionId);
     if (!sub) return;
     
+    // Dismiss the nudge card immediately
+    const updated = subscriptions.map(s => 
+      s.id === subscriptionId ? { ...s, amazon_nudge_dismissed: true } : s
+    );
+    localStorage.setItem("subscriptions", JSON.stringify(updated));
+    setSubscriptions(updated);
+    
     setAmazonAssistant({
       subscriptionId,
       subscriptionName: sub.plan_name || sub.merchant_normalized,
@@ -367,7 +375,8 @@ export default function Dashboard() {
       if (sub.id === subscriptionId) {
         return {
           ...sub,
-          intended_action: "none" as const
+          intended_action: "none" as const,
+          amazon_nudge_dismissed: true // Dismiss the nudge
         };
       }
       return sub;
@@ -429,7 +438,7 @@ export default function Dashboard() {
     // Check if Amazon subscription needs proactive nudge (7-10 days before renewal)
     const isAmazon = sub.merchant_normalized.toLowerCase().includes("amazon");
     const daysUntilRenewal = Math.ceil((new Date(renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    const showAmazonNudge = isAmazon && sub.status === "active" && daysUntilRenewal >= 7 && daysUntilRenewal <= 10;
+    const showAmazonNudge = isAmazon && sub.status === "active" && daysUntilRenewal >= 7 && daysUntilRenewal <= 10 && !sub.amazon_nudge_dismissed;
     
     const statusColors = {
       active: "bg-primary/20 text-primary",
