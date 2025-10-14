@@ -19,6 +19,7 @@ export default function OTP() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
   ];
 
   const phone = localStorage.getItem("phone");
@@ -62,17 +63,17 @@ export default function OTP() {
     }
 
     setIsValidating(true);
-    
+
     try {
       /**
        * STEP 1: Verify OTP with Supabase Auth
-       * 
+       *
        * This validates the user-entered OTP against the one sent via SMS:
        * 1. Supabase checks if the OTP matches what was generated
        * 2. Verifies the OTP hasn't expired (typically 60 seconds validity)
        * 3. If valid, creates an authenticated session for the user
        * 4. Returns user object with session tokens (access_token, refresh_token)
-       * 
+       *
        * Parameters:
        * - phone: The phone number that received the OTP (+91XXXXXXXXXX)
        * - token: The OTP code entered by user (e.g., "123456")
@@ -81,14 +82,14 @@ export default function OTP() {
       const { data, error } = await supabase.auth.verifyOtp({
         phone,
         token: otpValue,
-        type: 'sms'
+        type: "sms",
       });
 
       if (error) throw error;
 
       /**
        * STEP 2: Handle successful authentication
-       * 
+       *
        * data.user contains:
        * - id: Unique user ID (UUID)
        * - phone: Verified phone number
@@ -97,19 +98,19 @@ export default function OTP() {
        */
       if (data.user) {
         toast.success("OTP verified successfully!");
-        
+
         /**
          * STEP 3: Route user based on account status
-         * 
+         *
          * Check if this is a new user or existing user:
          * - New user: Redirect to profile setup to collect name, preferences
          * - Existing user: Redirect directly to dashboard
-         * 
+         *
          * Note: In production, you'd check this against a database table
          * instead of localStorage
          */
         const isNewUser = !localStorage.getItem("userName");
-        
+
         if (isNewUser) {
           navigate("/profile-setup");
         } else {
@@ -118,7 +119,7 @@ export default function OTP() {
       }
     } catch (error: any) {
       console.error("OTP verification error:", error);
-      
+
       /**
        * Common errors:
        * - "Invalid token": Wrong OTP entered
@@ -136,16 +137,16 @@ export default function OTP() {
 
   const handleResendOtp = async () => {
     if (!phone) return;
-    
+
     try {
       /**
        * RESEND OTP FLOW
-       * 
+       *
        * This triggers the same OTP generation process as initial login:
        * 1. Invalidates any previous OTP for this phone number
        * 2. Generates a new random OTP code
        * 3. Sends new SMS via configured SMS provider
-       * 
+       *
        * Rate limiting applies:
        * - Typically max 1 OTP per 60 seconds per phone number
        * - Prevents spam and abuse
@@ -156,7 +157,7 @@ export default function OTP() {
       });
 
       if (error) throw error;
-      
+
       toast.success("OTP resent successfully!");
     } catch (error: any) {
       console.error("Resend OTP error:", error);
@@ -175,17 +176,17 @@ export default function OTP() {
 
         {/* Progress Bar */}
         <div className="h-1 bg-border/30 rounded-full mb-12 overflow-hidden">
-          <div className="h-full w-1/4 bg-primary animate-shimmer bg-gradient-to-r from-primary via-primary/60 to-primary" 
-               style={{ backgroundSize: "200% 100%" }} />
+          <div
+            className="h-full w-1/4 bg-primary animate-shimmer bg-gradient-to-r from-primary via-primary/60 to-primary"
+            style={{ backgroundSize: "200% 100%" }}
+          />
         </div>
 
         {/* Content */}
         <div className="flex-1 space-y-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Verify OTP</h1>
-            <p className="text-muted-foreground">
-              Enter the code sent to +91 {phone}
-            </p>
+            <p className="text-muted-foreground">Enter the code sent to +91 {phone}</p>
           </div>
 
           {/* OTP Inputs */}
@@ -208,11 +209,7 @@ export default function OTP() {
             ))}
           </div>
 
-          {error && (
-            <p className="text-destructive text-sm text-center animate-fade-in">
-              Invalid OTP. Try again.
-            </p>
-          )}
+          {error && <p className="text-destructive text-sm text-center animate-fade-in">Invalid OTP. Try again.</p>}
 
           {isValidating && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
