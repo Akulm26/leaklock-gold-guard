@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Bell, Settings, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { SubscriptionActionBot } from "@/components/SubscriptionActionBot";
 
 interface Subscription {
   id: string;
@@ -39,6 +40,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const userName = localStorage.getItem("userName");
+  const [botOpen, setBotOpen] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
+  const [actionType, setActionType] = useState<"pause" | "cancel" | "renew">("cancel");
 
   useEffect(() => {
     loadSubscriptions();
@@ -77,66 +81,60 @@ export default function Dashboard() {
     toast.success("Plan deleted.");
   };
 
-  const handlePause = (id: string) => {
-    const updated = subscriptions.map((sub) =>
-      sub.id === id ? { ...sub, status: "paused" as const } : sub
-    );
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    toast.success("Plan paused. Savings will accrue.");
+  const openBot = (sub: Subscription, action: "pause" | "cancel" | "renew") => {
+    setSelectedSubscription(sub);
+    setActionType(action);
+    setBotOpen(true);
   };
 
-  const handleResume = (id: string) => {
-    const updated = subscriptions.map((sub) =>
-      sub.id === id ? { ...sub, status: "active" as const } : sub
-    );
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    toast.success("Plan resumed.");
-  };
+  const handleBotConfirm = () => {
+    if (!selectedSubscription) return;
 
-  const handleCancel = (id: string) => {
-    const updated = subscriptions.map((sub) =>
-      sub.id === id ? { ...sub, status: "canceled" as const } : sub
-    );
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    toast.success("Plan canceled. Savings will accrue.");
-  };
-
-  const handleRenew = (id: string) => {
+    const id = selectedSubscription.id;
     const updated = subscriptions.map((sub) => {
       if (sub.id === id) {
-        const currentDate = new Date(sub.next_renewal || sub.renewal || new Date());
-        let newRenewal = new Date(currentDate);
-        
-        // Calculate next renewal based on cycle
-        switch (sub.cycle) {
-          case "monthly":
-            newRenewal.setMonth(newRenewal.getMonth() + 1);
-            break;
-          case "quarterly":
-            newRenewal.setMonth(newRenewal.getMonth() + 3);
-            break;
-          case "yearly":
-            newRenewal.setFullYear(newRenewal.getFullYear() + 1);
-            break;
-          default:
-            newRenewal.setMonth(newRenewal.getMonth() + 1);
+        if (actionType === "pause") {
+          return { ...sub, status: "paused" as const };
+        } else if (actionType === "cancel") {
+          return { ...sub, status: "canceled" as const };
+        } else if (actionType === "renew") {
+          const currentDate = new Date(sub.next_renewal || sub.renewal || new Date());
+          let newRenewal = new Date(currentDate);
+          
+          switch (sub.cycle) {
+            case "monthly":
+              newRenewal.setMonth(newRenewal.getMonth() + 1);
+              break;
+            case "quarterly":
+              newRenewal.setMonth(newRenewal.getMonth() + 3);
+              break;
+            case "yearly":
+              newRenewal.setFullYear(newRenewal.getFullYear() + 1);
+              break;
+            default:
+              newRenewal.setMonth(newRenewal.getMonth() + 1);
+          }
+          
+          return { 
+            ...sub, 
+            status: "active" as const, 
+            next_renewal: newRenewal.toISOString(),
+            last_payment_date: new Date().toISOString()
+          };
         }
-        
-        return { 
-          ...sub, 
-          status: "active" as const, 
-          next_renewal: newRenewal.toISOString(),
-          last_payment_date: new Date().toISOString()
-        };
       }
       return sub;
     });
+    
     localStorage.setItem("subscriptions", JSON.stringify(updated));
     setSubscriptions(updated);
-    toast.success("Plan renewed successfully.");
+    
+    const messages = {
+      pause: "Plan paused. Savings will accrue.",
+      cancel: "Plan canceled. Savings will accrue.",
+      renew: "Plan renewed successfully."
+    };
+    toast.success(messages[actionType]);
   };
 
   const formatDate = (isoDate: string) => {
@@ -209,47 +207,49 @@ export default function Dashboard() {
             >
               <Edit size={16} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-primary"
-              onClick={() => handleRenew(sub.id)}
-              title="Renew subscription"
-            >
-              <span className="text-xs">🔄</span>
-            </Button>
-            {sub.status === "active" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handlePause(sub.id)}
-                title="Pause subscription"
-              >
-                <span className="text-xs">⏸</span>
-              </Button>
-            )}
             {sub.status === "paused" && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-green-400"
-                onClick={() => handleResume(sub.id)}
+                onClick={() => openBot(sub, "renew")}
                 title="Resume subscription"
               >
                 <span className="text-xs">▶</span>
               </Button>
             )}
-            {sub.status !== "canceled" && (
+            {sub.status === "canceled" && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hover:text-yellow-500"
-                onClick={() => handleCancel(sub.id)}
-                title="Cancel subscription"
+                className="h-8 w-8 text-primary"
+                onClick={() => openBot(sub, "renew")}
+                title="Renew subscription"
               >
-                <span className="text-xs">✕</span>
+                <span className="text-xs">🔄</span>
               </Button>
+            )}
+            {sub.status === "active" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => openBot(sub, "pause")}
+                  title="Pause subscription"
+                >
+                  <span className="text-xs">⏸</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:text-yellow-500"
+                  onClick={() => openBot(sub, "cancel")}
+                  title="Cancel subscription"
+                >
+                  <span className="text-xs">✕</span>
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"
@@ -406,16 +406,16 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* FAB */}
-        <Button
-          variant="gold"
-          size="icon"
-          className="fixed bottom-24 right-8 h-16 w-16 rounded-full shadow-2xl gold-glow z-50"
-          onClick={() => navigate("/add-manual")}
-        >
-          <Plus size={24} />
-        </Button>
       </div>
+      
+      <SubscriptionActionBot
+        isOpen={botOpen}
+        onClose={() => setBotOpen(false)}
+        subscription={selectedSubscription}
+        actionType={actionType}
+        onConfirm={handleBotConfirm}
+      />
+      
       <BottomNav />
     </MobileLayout>
   );
