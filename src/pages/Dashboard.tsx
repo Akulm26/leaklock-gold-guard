@@ -220,14 +220,19 @@ export default function Dashboard() {
         source: (sub.source || "auto") as "auto" | "manual",
         merchant_normalized: sub.provider,
         plan_name: sub.name,
+        provider: sub.provider,
         amount: Number(sub.amount),
         currency: sub.currency || "USD",
         cycle: sub.billing_cycle as "monthly" | "quarterly" | "yearly" | "custom",
         start_date: sub.created_at,
         next_renewal: sub.next_billing_date,
+        next_billing_date: sub.next_billing_date,
         status: sub.status as "active" | "paused" | "canceled",
         status_changed_at: sub.status_changed_at,
-        reminders: {
+        pending_change: sub.pending_change,
+        amazon_nudge_dismissed: sub.amazon_nudge_dismissed || false,
+        missed_charges: sub.missed_charges || 0,
+        reminders: sub.reminders || {
           enabled: false,
           per_item_Tn: [],
           per_item_daily_from_T: null
