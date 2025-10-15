@@ -14,6 +14,7 @@ import { EditSubscriptionSheet } from "@/components/EditSubscriptionSheet";
 import { ConfirmActionSheet } from "@/components/ConfirmActionSheet";
 import { LLMAssistantSheet } from "@/components/LLMAssistantSheet";
 import { ExpiryNotificationModal } from "@/components/ExpiryNotificationModal";
+import { RecoverySheet } from "@/components/RecoverySheet";
 import { supabase } from "@/integrations/supabase/client";
 
 
@@ -38,8 +39,12 @@ interface Subscription {
   next_renewal: string;
   next_billing_date?: string;
   last_payment_date?: string;
-  status: "active" | "paused" | "canceled";
+  status: "active" | "paused" | "canceled" | "expired";
   status_changed_at?: string;
+  expired_since?: string;
+  retry_window_days?: number;
+  reactivation_watch?: boolean;
+  count_expired_as_savings?: boolean;
   reminders: {
     enabled: boolean;
     per_item_Tn: number[];
@@ -100,10 +105,12 @@ export default function Dashboard() {
   const [confirmActionSub, setConfirmActionSub] = useState<any>(null);
   const [confirmActionOpen, setConfirmActionOpen] = useState(false);
   const [llmAssistantSub, setLlmAssistantSub] = useState<any>(null);
-  const [llmAction, setLlmAction] = useState<"pause" | "cancel" | "renew" | null>(null);
+  const [llmAction, setLlmAction] = useState<"pause" | "cancel" | "renew" | "recover" | null>(null);
   const [llmAssistantOpen, setLlmAssistantOpen] = useState(false);
   const [expiryNotificationSub, setExpiryNotificationSub] = useState<any>(null);
   const [expiryModalOpen, setExpiryModalOpen] = useState(false);
+  const [recoverySub, setRecoverySub] = useState<any>(null);
+  const [recoverySheetOpen, setRecoverySheetOpen] = useState(false);
 
   useEffect(() => {
     loadSubscriptionsFromDatabase();
@@ -137,7 +144,7 @@ export default function Dashboard() {
   };
 
   const calculateSavings = (sub: any) => {
-    // Only calculate savings for paused or canceled subscriptions
+    // Only calculate savings for paused or canceled subscriptions (NOT expired)
     if (sub.status !== "paused" && sub.status !== "canceled") {
       return { monthly: 0, lifetime: 0 };
     }
@@ -227,8 +234,12 @@ export default function Dashboard() {
         start_date: sub.created_at,
         next_renewal: sub.next_billing_date,
         next_billing_date: sub.next_billing_date,
-        status: sub.status as "active" | "paused" | "canceled",
+        status: sub.status as "active" | "paused" | "canceled" | "expired",
         status_changed_at: sub.status_changed_at,
+        expired_since: sub.expired_since,
+        retry_window_days: sub.retry_window_days || 7,
+        reactivation_watch: sub.reactivation_watch || false,
+        count_expired_as_savings: sub.count_expired_as_savings || false,
         pending_change: sub.pending_change,
         amazon_nudge_dismissed: sub.amazon_nudge_dismissed || false,
         missed_charges: sub.missed_charges || 0,
@@ -284,18 +295,20 @@ export default function Dashboard() {
     setLlmAssistantOpen(true);
   };
 
-  const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel" | "renew") => {
+  const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel" | "renew" | "recover") => {
     try {
       const renewalDate = subscriptions.find(s => s.id === subscriptionId)?.next_billing_date || 
                           subscriptions.find(s => s.id === subscriptionId)?.next_renewal;
       
-      if (action === "renew") {
-        // For renew action, change status to active
+      if (action === "renew" || action === "recover") {
+        // For renew/recover action, change status to active
         const { error } = await supabase
           .from('subscriptions')
           .update({
             status: "active",
             status_changed_at: new Date().toISOString(),
+            expired_since: null,
+            reactivation_watch: false,
             pending_change: {
               enabled: true,
               action,
@@ -308,7 +321,7 @@ export default function Dashboard() {
 
         await loadSubscriptionsFromDatabase();
         setLlmAssistantOpen(false);
-        toast.success("Subscription renewed");
+        toast.success(action === "recover" ? "Subscription recovered" : "Subscription renewed");
       } else {
         const newStatus = action === "pause" ? "paused" : "canceled";
         
@@ -614,7 +627,7 @@ export default function Dashboard() {
   const savingsThisMonth = subscriptions.reduce((sum, sub) => {
     let savings = sub.savings_month_to_date || 0;
     
-    // Add amount if subscription was paused or canceled this month
+    // Add amount if subscription was paused or canceled this month (NOT expired)
     if ((sub.status === "paused" || sub.status === "canceled") && sub.status_changed_at) {
       const statusChangedDate = new Date(sub.status_changed_at);
       if (statusChangedDate.getMonth() === currentMonth && statusChangedDate.getFullYear() === currentYear) {
@@ -625,7 +638,7 @@ export default function Dashboard() {
     return sum + savings;
   }, 0).toFixed(2);
   
-  // Calculate lifetime savings - starts after 1 month of being paused/canceled
+  // Calculate lifetime savings - starts after 1 month of being paused/canceled (NOT expired)
   const savingsLifetime = subscriptions.reduce((sum, sub) => {
     let savings = 0;
     
@@ -662,6 +675,9 @@ export default function Dashboard() {
   const canceledSubscriptions = subscriptions.filter(
     (sub) => sub.status === "canceled"
   );
+  const expiredSubscriptions = subscriptions.filter(
+    (sub) => sub.status === "expired"
+  );
 
   const renderSubscriptionCard = (sub: Subscription) => {
     const displayName = sub.plan_name || sub.name || sub.merchant_normalized;
@@ -683,7 +699,8 @@ export default function Dashboard() {
     const statusColors = {
       active: "bg-primary/20 text-primary",
       paused: "bg-yellow-500/20 text-yellow-500",
-      canceled: "bg-destructive/20 text-destructive"
+      canceled: "bg-destructive/20 text-destructive",
+      expired: "bg-amber-500/20 text-amber-500 border border-amber-500/30"
     };
     
     return (
@@ -702,19 +719,32 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex gap-1">
-            {/* Info button - shows renew option for paused/canceled, status change for active */}
+            {/* Info button - shows renew option for paused/canceled, recovery for expired, status change for active */}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-8 w-8"
               onClick={() => {
-                if (sub.status === "paused" || sub.status === "canceled") {
+                if (sub.status === "expired") {
+                  setRecoverySub({
+                    id: sub.id,
+                    name: sub.plan_name || sub.name || sub.merchant_normalized,
+                    provider: sub.merchant_normalized || sub.provider,
+                    expiredSince: sub.expired_since,
+                    lastEvidence: "Payment failed"
+                  });
+                  setRecoverySheetOpen(true);
+                } else if (sub.status === "paused" || sub.status === "canceled") {
                   handleRenewClick(sub);
                 } else {
                   handleOpenStatusChange(sub);
                 }
               }}
-              title={sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : "Update status"}
+              title={
+                sub.status === "expired" ? "Recover subscription" :
+                sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : 
+                "Update status"
+              }
             >
               <Info size={16} />
             </Button>
@@ -740,7 +770,8 @@ export default function Dashboard() {
         <div className="flex items-center justify-between text-sm gap-2">
           <span className={`font-medium ${renewal.color}`}>
             {sub.status === "active" ? `Renews ${renewal.text}` : 
-             sub.status === "paused" ? "Paused" : "Canceled"}
+             sub.status === "paused" ? "Paused" : 
+             sub.status === "expired" ? "Expired" : "Canceled"}
           </span>
           <div className="flex gap-2">
             <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[sub.status]}`}>
@@ -751,6 +782,56 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
+
+        {/* Expired Banner */}
+        {sub.status === "expired" && (
+          <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="text-amber-500 mt-0.5" size={16} />
+              <div className="flex-1">
+                <p className="text-xs text-amber-500 font-medium mb-2">
+                  Renewal failed — update payment to resume.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 text-xs h-8 bg-primary"
+                    onClick={() => {
+                      setRecoverySub({
+                        id: sub.id,
+                        name: sub.plan_name || sub.name || sub.merchant_normalized,
+                        provider: sub.merchant_normalized || sub.provider,
+                        expiredSince: sub.expired_since,
+                        lastEvidence: "Payment failed"
+                      });
+                      setRecoverySheetOpen(true);
+                    }}
+                  >
+                    Renew now
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-8 border-primary/30"
+                    onClick={() => {
+                      setRecoverySub({
+                        id: sub.id,
+                        name: sub.plan_name || sub.name || sub.merchant_normalized,
+                        provider: sub.merchant_normalized || sub.provider,
+                        expiredSince: sub.expired_since,
+                        lastEvidence: "Payment failed"
+                      });
+                      setRecoverySheetOpen(true);
+                    }}
+                  >
+                    Update payment method
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Soft Evidence Banner */}
         {showSoftEvidence && (
@@ -910,18 +991,21 @@ export default function Dashboard() {
         </div>
           ) : (
             <Tabs defaultValue="all" className="h-full flex flex-col">
-              <TabsList className="w-full mb-4 glass-card grid grid-cols-4">
-                <TabsTrigger value="all">
+              <TabsList className="w-full mb-4 glass-card grid grid-cols-5 text-xs">
+                <TabsTrigger value="all" className="text-xs">
                   All ({subscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="active">
+                <TabsTrigger value="active" className="text-xs">
                   Active ({activeSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="paused">
+                <TabsTrigger value="paused" className="text-xs">
                   Paused ({pausedSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="canceled">
+                <TabsTrigger value="canceled" className="text-xs">
                   Canceled ({canceledSubscriptions.length})
+                </TabsTrigger>
+                <TabsTrigger value="expired" className="text-xs">
+                  Expired ({expiredSubscriptions.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -956,6 +1040,16 @@ export default function Dashboard() {
                   ) : (
                     <p className="text-center text-muted-foreground py-8">
                       No canceled subscriptions
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="expired" className="mt-0 space-y-3">
+                  {expiredSubscriptions.length > 0 ? (
+                    expiredSubscriptions.map(renderSubscriptionCard)
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      No expired subscriptions
                     </p>
                   )}
                 </TabsContent>

@@ -89,8 +89,10 @@ export type Database = {
           amount: number
           billing_cycle: string
           category: string | null
+          count_expired_as_savings: boolean | null
           created_at: string | null
           currency: string | null
+          expired_since: string | null
           first_paid_month: string | null
           id: string
           last_payment_date: string | null
@@ -102,7 +104,9 @@ export type Database = {
           payment_method: string | null
           pending_change: Json | null
           provider: string
+          reactivation_watch: boolean | null
           reminders: Json | null
+          retry_window_days: number | null
           saving_events: Json | null
           savings_lifetime: number | null
           savings_month_to_date: number | null
@@ -117,8 +121,10 @@ export type Database = {
           amount: number
           billing_cycle: string
           category?: string | null
+          count_expired_as_savings?: boolean | null
           created_at?: string | null
           currency?: string | null
+          expired_since?: string | null
           first_paid_month?: string | null
           id?: string
           last_payment_date?: string | null
@@ -130,7 +136,9 @@ export type Database = {
           payment_method?: string | null
           pending_change?: Json | null
           provider: string
+          reactivation_watch?: boolean | null
           reminders?: Json | null
+          retry_window_days?: number | null
           saving_events?: Json | null
           savings_lifetime?: number | null
           savings_month_to_date?: number | null
@@ -145,8 +153,10 @@ export type Database = {
           amount?: number
           billing_cycle?: string
           category?: string | null
+          count_expired_as_savings?: boolean | null
           created_at?: string | null
           currency?: string | null
+          expired_since?: string | null
           first_paid_month?: string | null
           id?: string
           last_payment_date?: string | null
@@ -158,7 +168,9 @@ export type Database = {
           payment_method?: string | null
           pending_change?: Json | null
           provider?: string
+          reactivation_watch?: boolean | null
           reminders?: Json | null
+          retry_window_days?: number | null
           saving_events?: Json | null
           savings_lifetime?: number | null
           savings_month_to_date?: number | null
