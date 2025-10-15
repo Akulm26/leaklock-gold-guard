@@ -730,21 +730,41 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Renewal Notification - 10 days before renewal */}
-        {showRenewalNotification && (
+        {/* Renewal Notification - 10 days or less before renewal */}
+        {showRenewalNotification && !sub.pending_change?.enabled && (
           <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertCircle className="text-yellow-500 mt-0.5" size={16} />
               <div className="flex-1">
                 <p className="text-xs text-yellow-500 font-medium mb-2">
-                  Renewing in {daysUntilRenewal} {daysUntilRenewal === 1 ? 'day' : 'days'}! Continue subscribing?
+                  Renewing in 10 days or less! Continue subscribing?
                 </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     className="flex-1 text-xs h-8"
-                    onClick={() => {}}
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('subscriptions')
+                          .update({
+                            pending_change: {
+                              enabled: true,
+                              action: 'continue',
+                              for_cycle_date: renewalDate
+                            }
+                          })
+                          .eq('id', sub.id);
+
+                        if (error) throw error;
+                        await loadSubscriptionsFromDatabase();
+                        toast.success("Subscription will continue");
+                      } catch (error) {
+                        console.error('Error updating subscription:', error);
+                        toast.error('Failed to update');
+                      }
+                    }}
                   >
                     Yes, continue
                   </Button>
