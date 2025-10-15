@@ -70,15 +70,12 @@ export function EditSubscriptionSheet({
     }
     try {
       const statusChanged = subscription.status !== status;
-      const {
-        error
-      } = await supabase.from('subscriptions').update({
+      const updateData: any = {
         name,
         provider: name,
         amount: parseFloat(amount),
         billing_cycle: cycle,
         status,
-        status_changed_at: statusChanged ? new Date().toISOString() : undefined,
         next_billing_date: renewalDate.toISOString().split('T')[0],
         last_payment_date: lastPaymentDate?.toISOString().split('T')[0],
         reminders: {
@@ -86,7 +83,14 @@ export function EditSubscriptionSheet({
           per_item_Tn: selectedDays,
           per_item_daily_from_T: dailyFromT === "none" ? null : parseInt(dailyFromT)
         }
-      }).eq('id', subscription.id);
+      };
+
+      // Only update status_changed_at if status actually changed
+      if (statusChanged) {
+        updateData.status_changed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase.from('subscriptions').update(updateData).eq('id', subscription.id);
       if (error) throw error;
       toast.success("Changes updated");
       onSaved();

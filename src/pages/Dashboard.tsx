@@ -381,34 +381,37 @@ export default function Dashboard() {
   };
 
   const handleSoftEvidenceAction = async (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
-    const updated = subscriptions.map(sub => {
-      if (sub.id === subscriptionId) {
-        if (action === "keep") {
-          return {
-            ...sub,
-            missed_charges: 0,
-            status_watch: { suspected_change: false }
-          };
-        }
-        return {
-          ...sub,
-          status: action,
-          status_changed_at: new Date().toISOString(),
-          missed_charges: 0,
-          status_watch: { suspected_change: false }
-        };
+    try {
+      if (action === "keep") {
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            missed_charges: 0
+          })
+          .eq('id', subscriptionId);
+
+        if (error) throw error;
+        
+        toast.info("Subscription kept active");
+      } else {
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            status: action,
+            status_changed_at: new Date().toISOString(),
+            missed_charges: 0
+          })
+          .eq('id', subscriptionId);
+
+        if (error) throw error;
+        
+        toast.success(`Subscription marked as ${action}`);
       }
-      return sub;
-    });
-    
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    await loadSubscriptionsFromDatabase();
-    
-    if (action !== "keep") {
-      toast.success(`Subscription marked as ${action}`);
-    } else {
-      toast.info("Subscription kept active");
+
+      await loadSubscriptionsFromDatabase();
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      toast.error('Failed to update subscription');
     }
   };
 
