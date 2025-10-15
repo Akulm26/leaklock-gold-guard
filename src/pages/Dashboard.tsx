@@ -765,7 +765,7 @@ export default function Dashboard() {
                   Active ({activeSubscriptions.length})
                 </TabsTrigger>
                 <TabsTrigger value="paused">
-                  Expired ({pausedSubscriptions.length})
+                  Paused ({pausedSubscriptions.length})
                 </TabsTrigger>
                 <TabsTrigger value="canceled">
                   Canceled ({canceledSubscriptions.length})
