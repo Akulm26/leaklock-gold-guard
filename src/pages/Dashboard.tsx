@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info, RefreshCw } from "lucide-react";
+import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
 import { AmazonAssistantSheet } from "@/components/AmazonAssistantSheet";
@@ -640,6 +640,9 @@ export default function Dashboard() {
     const daysUntilRenewal = Math.ceil((new Date(renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const showAmazonNudge = isAmazon && sub.status === "active" && daysUntilRenewal >= 7 && daysUntilRenewal <= 10 && !sub.amazon_nudge_dismissed;
     
+    // Check if subscription renews within 10 days (for all subscriptions)
+    const showRenewalNotification = sub.status === "active" && daysUntilRenewal > 0 && daysUntilRenewal <= 10;
+    
     const statusColors = {
       active: "bg-primary/20 text-primary",
       paused: "bg-yellow-500/20 text-yellow-500",
@@ -725,6 +728,46 @@ export default function Dashboard() {
             onCancel={() => handleAmazonAction(sub.id, "cancel")}
             onKeep={() => handleAmazonKeep(sub.id)}
           />
+        )}
+
+        {/* Renewal Notification - 10 days before renewal */}
+        {showRenewalNotification && (
+          <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="text-yellow-500 mt-0.5" size={16} />
+              <div className="flex-1">
+                <p className="text-xs text-yellow-500 font-medium mb-2">
+                  Renewing in {daysUntilRenewal} {daysUntilRenewal === 1 ? 'day' : 'days'}! Continue subscribing?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-8"
+                    onClick={() => {}}
+                  >
+                    Yes, continue
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="flex-1 text-xs h-8"
+                    onClick={() => {
+                      setLlmAssistantSub({
+                        id: sub.id,
+                        name: displayName,
+                        provider: sub.merchant_normalized || sub.provider
+                      });
+                      setLlmAction("pause");
+                      setLlmAssistantOpen(true);
+                    }}
+                  >
+                    No, pause/cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
