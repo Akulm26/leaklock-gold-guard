@@ -599,11 +599,24 @@ export default function Dashboard() {
     setSubscriptions(updated);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = subscriptions.filter((sub) => sub.id !== id);
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    toast.success("Plan deleted.");
+  const handleDelete = async (id: string) => {
+    try {
+      // Delete from Supabase database
+      const { error } = await supabase
+        .from('subscriptions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update local state
+      const updated = subscriptions.filter((sub) => sub.id !== id);
+      setSubscriptions(updated);
+      toast.success("Plan deleted.");
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      toast.error('Failed to delete subscription');
+    }
   };
 
 
