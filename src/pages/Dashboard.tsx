@@ -565,7 +565,25 @@ export default function Dashboard() {
   };
 
   const totalAmount = subscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-  const savingsThisMonth = subscriptions.reduce((sum, sub) => sum + (sub.savings_month_to_date || 0), 0);
+  
+  // Calculate savings from paused/canceled subscriptions this month
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const savingsThisMonth = subscriptions.reduce((sum, sub) => {
+    let savings = sub.savings_month_to_date || 0;
+    
+    // Add amount if subscription was paused or canceled this month
+    if ((sub.status === "paused" || sub.status === "canceled") && sub.status_changed_at) {
+      const statusChangedDate = new Date(sub.status_changed_at);
+      if (statusChangedDate.getMonth() === currentMonth && statusChangedDate.getFullYear() === currentYear) {
+        savings += sub.amount;
+      }
+    }
+    
+    return sum + savings;
+  }, 0);
+  
   const savingsLifetime = subscriptions.reduce((sum, sub) => sum + (sub.savings_lifetime || 0), 0);
   
   const nextRenewal = subscriptions
