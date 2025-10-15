@@ -53,6 +53,7 @@ export default function AddManual() {
           next_billing_date: renewalDate,
           billing_cycle: 'monthly',
           status: 'active',
+          source: 'manual',
           reminders: {
             enabled: false,
             per_item_Tn: [3],

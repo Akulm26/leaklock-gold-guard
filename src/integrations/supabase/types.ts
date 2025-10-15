@@ -106,6 +106,7 @@ export type Database = {
           saving_events: Json | null
           savings_lifetime: number | null
           savings_month_to_date: number | null
+          source: string
           status: string | null
           status_changed_at: string | null
           updated_at: string | null
@@ -133,6 +134,7 @@ export type Database = {
           saving_events?: Json | null
           savings_lifetime?: number | null
           savings_month_to_date?: number | null
+          source?: string
           status?: string | null
           status_changed_at?: string | null
           updated_at?: string | null
@@ -160,6 +162,7 @@ export type Database = {
           saving_events?: Json | null
           savings_lifetime?: number | null
           savings_month_to_date?: number | null
+          source?: string
           status?: string | null
           status_changed_at?: string | null
           updated_at?: string | null

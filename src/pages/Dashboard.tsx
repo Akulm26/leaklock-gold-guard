@@ -217,7 +217,7 @@ export default function Dashboard() {
       // Transform database subscriptions to match the UI Subscription interface
       const transformedSubs: Subscription[] = (data || []).map((sub: any) => ({
         id: sub.id,
-        source: "auto" as const,
+        source: (sub.source || "auto") as "auto" | "manual",
         merchant_normalized: sub.provider,
         plan_name: sub.name,
         amount: Number(sub.amount),
