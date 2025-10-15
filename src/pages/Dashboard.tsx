@@ -586,7 +586,7 @@ export default function Dashboard() {
     }
     
     return sum + savings;
-  }, 0);
+  }, 0).toFixed(2);
   
   // Calculate lifetime savings - starts after 1 month of being paused/canceled
   const savingsLifetime = subscriptions.reduce((sum, sub) => {
@@ -607,7 +607,7 @@ export default function Dashboard() {
     }
     
     return sum + savings;
-  }, 0);
+  }, 0).toFixed(2);
   
   const nextRenewal = subscriptions
     .filter(s => s.status === "active")
@@ -654,10 +654,10 @@ export default function Dashboard() {
               <h3 className="font-bold text-lg">{displayName}</h3>
               {isExpiring && hasReminders && <Bell className="text-primary animate-pulse" size={16} />}
             </div>
-            <p className="text-2xl font-bold text-primary">₹{sub.amount}</p>
+            <p className="text-2xl font-bold text-primary">₹{sub.amount.toFixed(2)}</p>
             {hasSavings && (
               <p className="text-xs text-green-400 mt-1">
-                Saved ₹{sub.savings_lifetime} lifetime
+                Saved ₹{sub.savings_lifetime.toFixed(2)} lifetime
               </p>
             )}
           </div>
