@@ -8,9 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface LLMAssistantSheetProps {
   open: boolean;
   subscription: { id: string; name: string; provider: string } | null;
-  action: "pause" | "cancel" | null;
+  action: "pause" | "cancel" | "renew" | null;
   onClose: () => void;
-  onCompleted: (subscriptionId: string, action: "pause" | "cancel") => void;
+  onCompleted: (subscriptionId: string, action: "pause" | "cancel" | "renew") => void;
 }
 
 export function LLMAssistantSheet({
@@ -86,7 +86,7 @@ export function LLMAssistantSheet({
             <div>
               <SheetTitle className="text-xl">Subscription Assistant</SheetTitle>
               <p className="text-sm text-muted-foreground">
-                {action === "cancel" ? "Cancel" : "Pause"} {subscription.name || subscription.provider}
+                {action === "cancel" ? "Cancel" : action === "renew" ? "Renew" : "Pause"} {subscription.name || subscription.provider}
               </p>
             </div>
           </div>

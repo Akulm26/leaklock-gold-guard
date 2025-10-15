@@ -100,7 +100,7 @@ export default function Dashboard() {
   const [confirmActionSub, setConfirmActionSub] = useState<any>(null);
   const [confirmActionOpen, setConfirmActionOpen] = useState(false);
   const [llmAssistantSub, setLlmAssistantSub] = useState<any>(null);
-  const [llmAction, setLlmAction] = useState<"pause" | "cancel" | null>(null);
+  const [llmAction, setLlmAction] = useState<"pause" | "cancel" | "renew" | null>(null);
   const [llmAssistantOpen, setLlmAssistantOpen] = useState(false);
   const [expiryNotificationSub, setExpiryNotificationSub] = useState<any>(null);
   const [expiryModalOpen, setExpiryModalOpen] = useState(false);
@@ -284,31 +284,53 @@ export default function Dashboard() {
     setLlmAssistantOpen(true);
   };
 
-  const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel") => {
+  const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel" | "renew") => {
     try {
       const renewalDate = subscriptions.find(s => s.id === subscriptionId)?.next_billing_date || 
                           subscriptions.find(s => s.id === subscriptionId)?.next_renewal;
       
-      const newStatus = action === "pause" ? "paused" : "canceled";
-      
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: newStatus,
-          status_changed_at: new Date().toISOString(),
-          pending_change: {
-            enabled: true,
-            action,
-            for_cycle_date: renewalDate
-          }
-        })
-        .eq('id', subscriptionId);
+      if (action === "renew") {
+        // For renew action, change status to active
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            status: "active",
+            status_changed_at: new Date().toISOString(),
+            pending_change: {
+              enabled: true,
+              action,
+              for_cycle_date: renewalDate
+            }
+          })
+          .eq('id', subscriptionId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await loadSubscriptionsFromDatabase();
-      setLlmAssistantOpen(false);
-      toast.success(`Subscription ${action === "pause" ? "paused" : "canceled"}`);
+        await loadSubscriptionsFromDatabase();
+        setLlmAssistantOpen(false);
+        toast.success("Subscription renewed");
+      } else {
+        const newStatus = action === "pause" ? "paused" : "canceled";
+        
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            status: newStatus,
+            status_changed_at: new Date().toISOString(),
+            pending_change: {
+              enabled: true,
+              action,
+              for_cycle_date: renewalDate
+            }
+          })
+          .eq('id', subscriptionId);
+
+        if (error) throw error;
+
+        await loadSubscriptionsFromDatabase();
+        setLlmAssistantOpen(false);
+        toast.success(`Subscription ${action === "pause" ? "paused" : "canceled"}`);
+      }
     } catch (error) {
       console.error('Error setting pending change:', error);
       toast.error('Failed to update subscription');
@@ -348,6 +370,16 @@ export default function Dashboard() {
       setLlmAction(action);
       setLlmAssistantOpen(true);
     }
+  };
+
+  const handleRenewClick = (sub: Subscription) => {
+    setLlmAssistantSub({
+      id: sub.id,
+      name: sub.plan_name || sub.name || sub.merchant_normalized,
+      provider: sub.merchant_normalized || sub.provider
+    });
+    setLlmAction("renew");
+    setLlmAssistantOpen(true);
   };
 
   const handleDirectStatusUpdate = async (subscriptionId: string, status: "active" | "paused" | "canceled") => {
@@ -670,12 +702,19 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex gap-1">
+            {/* Info button - shows renew option for paused/canceled, status change for active */}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-8 w-8"
-              onClick={() => handleOpenStatusChange(sub)}
-              title="Update status"
+              onClick={() => {
+                if (sub.status === "paused" || sub.status === "canceled") {
+                  handleRenewClick(sub);
+                } else {
+                  handleOpenStatusChange(sub);
+                }
+              }}
+              title={sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : "Update status"}
             >
               <Info size={16} />
             </Button>
