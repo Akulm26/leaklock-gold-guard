@@ -283,9 +283,13 @@ export default function Dashboard() {
       const renewalDate = subscriptions.find(s => s.id === subscriptionId)?.next_billing_date || 
                           subscriptions.find(s => s.id === subscriptionId)?.next_renewal;
       
+      const newStatus = action === "pause" ? "paused" : "canceled";
+      
       const { error } = await supabase
         .from('subscriptions')
         .update({
+          status: newStatus,
+          status_changed_at: new Date().toISOString(),
           pending_change: {
             enabled: true,
             action,
@@ -298,9 +302,10 @@ export default function Dashboard() {
 
       await loadSubscriptionsFromDatabase();
       setLlmAssistantOpen(false);
+      toast.success(`Subscription ${action === "pause" ? "paused" : "canceled"}`);
     } catch (error) {
       console.error('Error setting pending change:', error);
-      toast.error('Failed to mark pending change');
+      toast.error('Failed to update subscription');
     }
   };
 
