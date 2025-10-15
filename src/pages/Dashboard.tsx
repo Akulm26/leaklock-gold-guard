@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { StatusChangeSheet } from "@/components/StatusChangeSheet";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
 import { AmazonAssistantSheet } from "@/components/AmazonAssistantSheet";
 import { AmazonRenewalNudge } from "@/components/AmazonRenewalNudge";
+import { EditSubscriptionSheet } from "@/components/EditSubscriptionSheet";
+import { ConfirmActionSheet } from "@/components/ConfirmActionSheet";
+import { LLMAssistantSheet } from "@/components/LLMAssistantSheet";
+import { ExpiryNotificationModal } from "@/components/ExpiryNotificationModal";
 import { supabase } from "@/integrations/supabase/client";
 
 
@@ -23,14 +26,17 @@ interface EvidenceEvent {
 
 interface Subscription {
   id: string;
-  source: "auto" | "manual";
+  source?: "auto" | "manual";
   merchant_normalized: string;
   plan_name: string;
+  provider?: string;
   amount: number;
   currency: string;
   cycle: "monthly" | "quarterly" | "yearly" | "custom";
+  billing_cycle?: string;
   start_date: string;
   next_renewal: string;
+  next_billing_date?: string;
   last_payment_date?: string;
   status: "active" | "paused" | "canceled";
   status_changed_at?: string;
@@ -41,9 +47,12 @@ interface Subscription {
   };
   savings_month_to_date: number;
   savings_lifetime: number;
+  paid_months_count?: number;
+  first_paid_month?: string;
   confidence?: number;
   last_seen_at?: string;
   phone?: string;
+  user_id?: string;
   // Detection flags
   detected_change?: {
     type: "hard" | "soft";
@@ -77,13 +86,6 @@ export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const userName = localStorage.getItem("userName");
   const [botOpen, setBotOpen] = useState(false);
-  const [detectedChange, setDetectedChange] = useState<{
-    subscriptionId: string;
-    serviceName: string;
-    detectedStatus: "canceled" | "paused";
-    evidence: string;
-  } | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [amazonAssistant, setAmazonAssistant] = useState<{
     subscriptionId: string;
     subscriptionName: string;
@@ -91,10 +93,48 @@ export default function Dashboard() {
   } | null>(null);
   const [amazonSheetOpen, setAmazonSheetOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // New state for sheets
+  const [editingSubscription, setEditingSubscription] = useState<any>(null);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [confirmActionSub, setConfirmActionSub] = useState<any>(null);
+  const [confirmActionOpen, setConfirmActionOpen] = useState(false);
+  const [llmAssistantSub, setLlmAssistantSub] = useState<any>(null);
+  const [llmAction, setLlmAction] = useState<"pause" | "cancel" | null>(null);
+  const [llmAssistantOpen, setLlmAssistantOpen] = useState(false);
+  const [expiryNotificationSub, setExpiryNotificationSub] = useState<any>(null);
+  const [expiryModalOpen, setExpiryModalOpen] = useState(false);
 
   useEffect(() => {
     loadSubscriptionsFromDatabase();
+    checkExpiryNotifications();
   }, []);
+
+  const checkExpiryNotifications = async () => {
+    try {
+      const { data: subs, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      const now = new Date();
+      
+      subs?.forEach((sub: any) => {
+        const renewalDate = new Date(sub.next_billing_date);
+        const daysUntil = Math.ceil((renewalDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Show 10-day notification for new subscriptions (paid_months_count < 2)
+        if (daysUntil === 10 && (sub.paid_months_count || 0) < 2) {
+          setExpiryNotificationSub(sub);
+          setExpiryModalOpen(true);
+        }
+      });
+    } catch (error) {
+      console.error('Error checking expiry notifications:', error);
+    }
+  };
 
   const calculateSavings = (sub: any) => {
     // Only calculate savings for paused or canceled subscriptions
@@ -206,52 +246,133 @@ export default function Dashboard() {
   // Currently subscriptions are synced from database without detection flags
 
   const handleConfirmStatus = async (subscriptionId: string, status: "canceled" | "paused") => {
-    const updated = subscriptions.map(sub => {
-      if (sub.id === subscriptionId) {
-        return {
-          ...sub,
-          status,
-          status_changed_at: new Date().toISOString(),
-          detected_change: undefined,
-          watch_flag: false,
-        };
-      }
-      return sub;
-    });
-    
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
-    await loadSubscriptionsFromDatabase();
-    toast.success(`Subscription marked as ${status}`);
-    setSheetOpen(false);
+    // This is now handled by LLM assistant flow
+    // Status will be updated after user completes the steps
   };
 
-  const handleNotSure = (subscriptionId: string) => {
-    const updated = subscriptions.map(sub => {
-      if (sub.id === subscriptionId) {
-        return {
-          ...sub,
-          watch_flag: true,
-          detected_change: undefined,
-        };
-      }
-      return sub;
-    });
-    
-    localStorage.setItem("subscriptions", JSON.stringify(updated));
-    setSubscriptions(updated);
+  const handleNotSure = () => {
+    setConfirmActionOpen(false);
     toast.info("Marked for monitoring. We'll check again next cycle.");
-    setSheetOpen(false);
   };
 
   const handleOpenStatusChange = (sub: Subscription) => {
-    setDetectedChange({
-      subscriptionId: sub.id,
-      serviceName: sub.plan_name || sub.merchant_normalized,
-      detectedStatus: sub.status === "canceled" ? "canceled" : "paused",
-      evidence: sub.detected_change?.evidence || "Manual status check"
+    setConfirmActionSub({
+      id: sub.id,
+      name: sub.plan_name || sub.name || sub.merchant_normalized,
+      provider: sub.merchant_normalized || sub.provider
     });
-    setSheetOpen(true);
+    setConfirmActionOpen(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmActionOpen(false);
+    setLlmAssistantSub(confirmActionSub);
+    setLlmAction("cancel");
+    setLlmAssistantOpen(true);
+  };
+
+  const handleConfirmPause = () => {
+    setConfirmActionOpen(false);
+    setLlmAssistantSub(confirmActionSub);
+    setLlmAction("pause");
+    setLlmAssistantOpen(true);
+  };
+
+  const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel") => {
+    try {
+      const renewalDate = subscriptions.find(s => s.id === subscriptionId)?.next_billing_date || 
+                          subscriptions.find(s => s.id === subscriptionId)?.next_renewal;
+      
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          pending_change: {
+            enabled: true,
+            action,
+            for_cycle_date: renewalDate
+          }
+        })
+        .eq('id', subscriptionId);
+
+      if (error) throw error;
+
+      await loadSubscriptionsFromDatabase();
+      setLlmAssistantOpen(false);
+    } catch (error) {
+      console.error('Error setting pending change:', error);
+      toast.error('Failed to mark pending change');
+    }
+  };
+
+  const handleEditClick = (sub: Subscription) => {
+    setEditingSubscription({
+      id: sub.id,
+      name: sub.plan_name || sub.name || sub.merchant_normalized,
+      provider: sub.merchant_normalized || sub.provider,
+      amount: sub.amount,
+      billing_cycle: sub.cycle,
+      next_billing_date: sub.next_renewal || sub.renewal,
+      status: sub.status,
+      reminders: sub.reminders,
+      user_id: sub.user_id
+    });
+    setEditSheetOpen(true);
+  };
+
+  const handleStatusChange = (subscriptionId: string, action: "pause" | "cancel" | "resume") => {
+    const sub = subscriptions.find(s => s.id === subscriptionId);
+    if (!sub) return;
+    
+    if (action === "resume") {
+      // Direct update for resume
+      handleDirectStatusUpdate(subscriptionId, "active");
+    } else {
+      // Use LLM assistant for pause/cancel
+      setEditSheetOpen(false);
+      setLlmAssistantSub({
+        id: sub.id,
+        name: sub.plan_name || sub.name || sub.merchant_normalized,
+        provider: sub.merchant_normalized || sub.provider
+      });
+      setLlmAction(action);
+      setLlmAssistantOpen(true);
+    }
+  };
+
+  const handleDirectStatusUpdate = async (subscriptionId: string, status: "active" | "paused" | "canceled") => {
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status,
+          status_changed_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+
+      if (error) throw error;
+
+      await loadSubscriptionsFromDatabase();
+      toast.success("Status updated");
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleExpiryKeep = () => {
+    setExpiryModalOpen(false);
+  };
+
+  const handleExpiryCancel = () => {
+    setExpiryModalOpen(false);
+    if (expiryNotificationSub) {
+      setConfirmActionSub({
+        id: expiryNotificationSub.id,
+        name: expiryNotificationSub.name,
+        provider: expiryNotificationSub.provider
+      });
+      setConfirmActionOpen(true);
+    }
   };
 
   const handleSoftEvidenceAction = async (subscriptionId: string, action: "paused" | "canceled" | "keep") => {
@@ -455,8 +576,8 @@ export default function Dashboard() {
   const pausedSubscriptions = subscriptions.filter(
     (sub) => sub.status === "paused"
   );
-  const expiredSubscriptions = subscriptions.filter(
-    (sub) => sub.status === "canceled" || new Date(sub.next_renewal || sub.renewal || "") < new Date()
+  const canceledSubscriptions = subscriptions.filter(
+    (sub) => sub.status === "canceled"
   );
 
   const renderSubscriptionCard = (sub: Subscription) => {
@@ -508,7 +629,7 @@ export default function Dashboard() {
               variant="ghost" 
               size="icon" 
               className="h-8 w-8"
-              onClick={() => navigate(`/edit-subscription/${sub.id}`)}
+              onClick={() => handleEditClick(sub)}
             >
               <Edit size={16} />
             </Button>
@@ -646,8 +767,8 @@ export default function Dashboard() {
                 <TabsTrigger value="paused">
                   Paused ({pausedSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="expired">
-                  Expired ({expiredSubscriptions.length})
+                <TabsTrigger value="canceled">
+                  Canceled ({canceledSubscriptions.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -676,12 +797,12 @@ export default function Dashboard() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="expired" className="mt-0 space-y-3">
-                  {expiredSubscriptions.length > 0 ? (
-                    expiredSubscriptions.map(renderSubscriptionCard)
+                <TabsContent value="canceled" className="mt-0 space-y-3">
+                  {canceledSubscriptions.length > 0 ? (
+                    canceledSubscriptions.map(renderSubscriptionCard)
                   ) : (
                     <p className="text-center text-muted-foreground py-8">
-                      No expired subscriptions
+                      No canceled subscriptions
                     </p>
                   )}
                 </TabsContent>
@@ -702,13 +823,40 @@ export default function Dashboard() {
         <MessageCircle size={24} />
       </Button>
 
-      {/* Status Change Detection Sheet */}
-      <StatusChangeSheet
-        open={sheetOpen}
-        detectedChange={detectedChange}
-        onConfirm={handleConfirmStatus}
+      {/* Edit Subscription Sheet */}
+      <EditSubscriptionSheet
+        open={editSheetOpen}
+        subscription={editingSubscription}
+        onClose={() => setEditSheetOpen(false)}
+        onSaved={loadSubscriptionsFromDatabase}
+        onStatusChange={handleStatusChange}
+      />
+
+      {/* Confirm Action Sheet */}
+      <ConfirmActionSheet
+        open={confirmActionOpen}
+        subscription={confirmActionSub}
+        onConfirmCancel={handleConfirmCancel}
+        onConfirmPause={handleConfirmPause}
         onNotSure={handleNotSure}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => setConfirmActionOpen(false)}
+      />
+
+      {/* LLM Assistant Sheet */}
+      <LLMAssistantSheet
+        open={llmAssistantOpen}
+        subscription={llmAssistantSub}
+        action={llmAction}
+        onClose={() => setLlmAssistantOpen(false)}
+        onCompleted={handleLLMCompleted}
+      />
+
+      {/* Expiry Notification Modal */}
+      <ExpiryNotificationModal
+        open={expiryModalOpen}
+        subscription={expiryNotificationSub}
+        onKeep={handleExpiryKeep}
+        onCancel={handleExpiryCancel}
       />
 
       {/* Amazon Assistant Sheet */}

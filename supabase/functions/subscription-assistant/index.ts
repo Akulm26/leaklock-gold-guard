@@ -187,7 +187,25 @@ serve(async (req) => {
         if (!providerInfo) {
           response = `I don't have specific information about pausing subscriptions for ${serviceName}. I recommend checking their website or app for pause options in your subscription settings.`;
         } else if (!providerInfo.allowsPause) {
-          response = `Unfortunately, ${serviceName} does not allow pausing subscriptions. You can only cancel or keep it active. Would you like help with canceling instead?`;
+          response = `Unfortunately, ${serviceName} does not allow pausing subscriptions. You can only cancel or keep it active.`;
+          const cancelStepsText = providerInfo.cancelSteps 
+            ? `Here's how to cancel instead:\n\n${providerInfo.cancelSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`
+            : '';
+          
+          return new Response(
+            JSON.stringify({
+              response: response + '\n\n' + cancelStepsText,
+              hasSteps: !!providerInfo.cancelSteps,
+              providerUrl: providerInfo.url || null,
+              action,
+              service: serviceName,
+              pauseUnsupported: true,
+              cancelSteps: cancelStepsText
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
         } else if (providerInfo.pauseSteps) {
           response = `Here's how to pause your ${serviceName} subscription:\n\n${providerInfo.pauseSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`;
           hasSteps = true;

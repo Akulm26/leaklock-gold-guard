@@ -85,50 +85,83 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          amazon_nudge_dismissed: boolean | null
           amount: number
           billing_cycle: string
           category: string | null
           created_at: string | null
           currency: string | null
+          first_paid_month: string | null
           id: string
+          last_payment_date: string | null
+          missed_charges: number | null
           name: string
           next_billing_date: string
           notes: string | null
+          paid_months_count: number | null
           payment_method: string | null
+          pending_change: Json | null
           provider: string
+          reminders: Json | null
+          saving_events: Json | null
+          savings_lifetime: number | null
+          savings_month_to_date: number | null
           status: string | null
+          status_changed_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          amazon_nudge_dismissed?: boolean | null
           amount: number
           billing_cycle: string
           category?: string | null
           created_at?: string | null
           currency?: string | null
+          first_paid_month?: string | null
           id?: string
+          last_payment_date?: string | null
+          missed_charges?: number | null
           name: string
           next_billing_date: string
           notes?: string | null
+          paid_months_count?: number | null
           payment_method?: string | null
+          pending_change?: Json | null
           provider: string
+          reminders?: Json | null
+          saving_events?: Json | null
+          savings_lifetime?: number | null
+          savings_month_to_date?: number | null
           status?: string | null
+          status_changed_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          amazon_nudge_dismissed?: boolean | null
           amount?: number
           billing_cycle?: string
           category?: string | null
           created_at?: string | null
           currency?: string | null
+          first_paid_month?: string | null
           id?: string
+          last_payment_date?: string | null
+          missed_charges?: number | null
           name?: string
           next_billing_date?: string
           notes?: string | null
+          paid_months_count?: number | null
           payment_method?: string | null
+          pending_change?: Json | null
           provider?: string
+          reminders?: Json | null
+          saving_events?: Json | null
+          savings_lifetime?: number | null
+          savings_month_to_date?: number | null
           status?: string | null
+          status_changed_at?: string | null
           updated_at?: string | null
           user_id?: string
         }

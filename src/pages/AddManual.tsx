@@ -6,8 +6,9 @@ import { BackButton } from "@/components/BackButton";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const POPULAR_SERVICES = [
   "Netflix", "Amazon Prime", "Spotify", "YouTube Premium",
@@ -21,7 +22,7 @@ export default function AddManual() {
   const [renewalDate, setRenewalDate] = useState("");
   const [phone, setPhone] = useState("");
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!service.trim()) {
       toast.error("Please enter service name");
       return;
@@ -35,20 +36,38 @@ export default function AddManual() {
       return;
     }
 
-    // Get existing subscriptions
-    const existing = JSON.parse(localStorage.getItem("subscriptions") || "[]");
-    const newSub = {
-      id: Date.now().toString(),
-      name: service,
-      amount: parseFloat(amount),
-      renewal: new Date(renewalDate).toISOString(),
-      source: "manual",
-      phone: phone || undefined,
-    };
-    
-    localStorage.setItem("subscriptions", JSON.stringify([...existing, newSub]));
-    toast.success("Saved to your plans.");
-    navigate("/dashboard");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to add subscriptions");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: user.id,
+          name: service,
+          provider: service,
+          amount: parseFloat(amount),
+          next_billing_date: renewalDate,
+          billing_cycle: 'monthly',
+          status: 'active',
+          reminders: {
+            enabled: false,
+            per_item_Tn: [3],
+            per_item_daily_from_T: null,
+          },
+        });
+
+      if (error) throw error;
+
+      toast.success("Saved to your plans.");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error('Error saving subscription:', error);
+      toast.error('Failed to save subscription');
+    }
   };
 
   return (
