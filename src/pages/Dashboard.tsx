@@ -991,21 +991,18 @@ export default function Dashboard() {
         </div>
           ) : (
             <Tabs defaultValue="all" className="h-full flex flex-col">
-              <TabsList className="w-full mb-4 glass-card grid grid-cols-5 text-xs">
-                <TabsTrigger value="all" className="text-xs">
+              <TabsList className="w-full mb-4 glass-card grid grid-cols-4">
+                <TabsTrigger value="all">
                   All ({subscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="active" className="text-xs">
+                <TabsTrigger value="active">
                   Active ({activeSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="paused" className="text-xs">
+                <TabsTrigger value="paused">
                   Paused ({pausedSubscriptions.length})
                 </TabsTrigger>
-                <TabsTrigger value="canceled" className="text-xs">
+                <TabsTrigger value="canceled">
                   Canceled ({canceledSubscriptions.length})
-                </TabsTrigger>
-                <TabsTrigger value="expired" className="text-xs">
-                  Expired ({expiredSubscriptions.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -1040,16 +1037,6 @@ export default function Dashboard() {
                   ) : (
                     <p className="text-center text-muted-foreground py-8">
                       No canceled subscriptions
-                    </p>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="expired" className="mt-0 space-y-3">
-                  {expiredSubscriptions.length > 0 ? (
-                    expiredSubscriptions.map(renderSubscriptionCard)
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No expired subscriptions
                     </p>
                   )}
                 </TabsContent>
