@@ -226,6 +226,7 @@ export default function Dashboard() {
         start_date: sub.created_at,
         next_renewal: sub.next_billing_date,
         status: sub.status as "active" | "paused" | "canceled",
+        status_changed_at: sub.status_changed_at,
         reminders: {
           enabled: false,
           per_item_Tn: [],
