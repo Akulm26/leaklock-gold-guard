@@ -584,7 +584,26 @@ export default function Dashboard() {
     return sum + savings;
   }, 0);
   
-  const savingsLifetime = subscriptions.reduce((sum, sub) => sum + (sub.savings_lifetime || 0), 0);
+  // Calculate lifetime savings - starts after 1 month of being paused/canceled
+  const savingsLifetime = subscriptions.reduce((sum, sub) => {
+    let savings = 0;
+    
+    if ((sub.status === "paused" || sub.status === "canceled") && sub.status_changed_at) {
+      const statusChangedDate = new Date(sub.status_changed_at);
+      const now = new Date();
+      
+      // Calculate months elapsed since status change
+      const monthsElapsed = (now.getFullYear() - statusChangedDate.getFullYear()) * 12 
+                          + (now.getMonth() - statusChangedDate.getMonth());
+      
+      // Start counting savings after 1 month has passed
+      if (monthsElapsed > 0) {
+        savings = sub.amount * monthsElapsed;
+      }
+    }
+    
+    return sum + savings;
+  }, 0);
   
   const nextRenewal = subscriptions
     .filter(s => s.status === "active")
