@@ -711,6 +711,7 @@ export default function Dashboard() {
     const displayName = sub.plan_name || sub.name || sub.merchant_normalized;
     const renewalDate = sub.next_renewal || sub.renewal || "";
     const renewal = formatDate(renewalDate);
+    const isExpiredRenewal = renewal.text === "Expired";
     const isExpiring = renewal.color === "text-primary";
     const hasReminders = sub.reminders?.enabled;
     const hasSavings = (sub.savings_lifetime || 0) > 0;
@@ -753,10 +754,8 @@ export default function Dashboard() {
               size="icon" 
               className="h-8 w-8"
               onClick={() => {
-                // Check if status contains "expired" (case-insensitive)
-                const isExpiredStatus = sub.status.toLowerCase().includes("expired");
-                
-                if (isExpiredStatus) {
+                // Check if renewal date has passed (shows "Renews Expired")
+                if (isExpiredRenewal) {
                   // For expired subscriptions, show ConfirmActionSheet with Renew and Not Sure
                   setConfirmActionSub({
                     id: sub.id,
@@ -772,7 +771,7 @@ export default function Dashboard() {
                 }
               }}
               title={
-                sub.status === "expired" ? "Renew subscription" :
+                isExpiredRenewal ? "Renew subscription" :
                 sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : 
                 "Update status"
               }
@@ -799,14 +798,15 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center justify-between text-sm gap-2">
-          <span className={`font-medium ${renewal.color}`}>
-            {sub.status === "active" ? `Renews ${renewal.text}` : 
+          <span className={`font-medium ${isExpiredRenewal ? "text-destructive" : renewal.color}`}>
+            {isExpiredRenewal ? "Expired" :
+             sub.status === "active" ? `Renews ${renewal.text}` : 
              sub.status === "paused" ? "Paused" : 
-             sub.status.toLowerCase().includes("expired") ? "Expired" : "Canceled"}
+             sub.status === "canceled" ? "Canceled" : sub.status}
           </span>
           <div className="flex gap-2">
-            <span className={`px-2 py-1 rounded-md text-xs font-medium ${sub.status.toLowerCase().includes("expired") ? statusColors.expired : statusColors[sub.status]}`}>
-              {sub.status.toLowerCase().includes("expired") ? "Expired" : sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+            <span className={`px-2 py-1 rounded-md text-xs font-medium ${isExpiredRenewal ? statusColors.expired : statusColors[sub.status]}`}>
+              {isExpiredRenewal ? "Expired" : sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
             </span>
             <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">
               {sub.source === "auto" ? "Auto" : "Manual"}
@@ -815,7 +815,7 @@ export default function Dashboard() {
         </div>
 
         {/* Expired Banner */}
-        {sub.status.toLowerCase().includes("expired") && (
+        {isExpiredRenewal && (
           <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertCircle className="text-amber-500 mt-0.5" size={16} />
