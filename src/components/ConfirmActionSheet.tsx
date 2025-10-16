@@ -53,7 +53,7 @@ export function ConfirmActionSheet({
                 className="w-full h-12 text-base"
                 onClick={onRenewal}
               >
-                Renewal
+                Renew
               </Button>
               <Button
                 variant="ghost"

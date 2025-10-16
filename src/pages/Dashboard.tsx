@@ -753,8 +753,11 @@ export default function Dashboard() {
               size="icon" 
               className="h-8 w-8"
               onClick={() => {
-                if (sub.status === "expired") {
-                  // For expired subscriptions, show ConfirmActionSheet with Renewal and Not Sure
+                // Check if status contains "expired" (case-insensitive)
+                const isExpiredStatus = sub.status.toLowerCase().includes("expired");
+                
+                if (isExpiredStatus) {
+                  // For expired subscriptions, show ConfirmActionSheet with Renew and Not Sure
                   setConfirmActionSub({
                     id: sub.id,
                     name: sub.plan_name || sub.name || sub.merchant_normalized,
@@ -802,8 +805,8 @@ export default function Dashboard() {
              sub.status === "expired" ? "Expired" : "Canceled"}
           </span>
           <div className="flex gap-2">
-            <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[sub.status]}`}>
-              {sub.status.toLowerCase().includes("expired") || sub.status === "expired" ? "Expired" : sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+            <span className={`px-2 py-1 rounded-md text-xs font-medium ${sub.status.toLowerCase().includes("expired") ? statusColors.expired : statusColors[sub.status]}`}>
+              {sub.status.toLowerCase().includes("expired") ? "Expired" : sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
             </span>
             <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">
               {sub.source === "auto" ? "Auto" : "Manual"}
