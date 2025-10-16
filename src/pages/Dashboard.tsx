@@ -295,6 +295,13 @@ export default function Dashboard() {
     setLlmAssistantOpen(true);
   };
 
+  const handleRenewalExpired = () => {
+    setConfirmActionOpen(false);
+    setLlmAssistantSub(confirmActionSub);
+    setLlmAction("renew");
+    setLlmAssistantOpen(true);
+  };
+
   const handleLLMCompleted = async (subscriptionId: string, action: "pause" | "cancel" | "renew" | "recover") => {
     try {
       const renewalDate = subscriptions.find(s => s.id === subscriptionId)?.next_billing_date || 
@@ -685,7 +692,7 @@ export default function Dashboard() {
     )[0];
 
   const activeSubscriptions = subscriptions.filter(
-    (sub) => sub.status === "active" && new Date(sub.next_renewal || sub.renewal || "") >= new Date()
+    (sub) => sub.status === "active"
   );
   const pausedSubscriptions = subscriptions.filter(
     (sub) => sub.status === "paused"
@@ -747,14 +754,14 @@ export default function Dashboard() {
               className="h-8 w-8"
               onClick={() => {
                 if (sub.status === "expired") {
-                  // For expired subscriptions, show only Renewal and Not Sure
-                  setLlmAssistantSub({
+                  // For expired subscriptions, show ConfirmActionSheet with Renewal and Not Sure
+                  setConfirmActionSub({
                     id: sub.id,
                     name: sub.plan_name || sub.name || sub.merchant_normalized,
-                    provider: sub.merchant_normalized || sub.provider
+                    provider: sub.merchant_normalized || sub.provider,
+                    isExpired: true
                   });
-                  setLlmAction("renew");
-                  setLlmAssistantOpen(true);
+                  setConfirmActionOpen(true);
                 } else if (sub.status === "paused" || sub.status === "canceled") {
                   handleRenewClick(sub);
                 } else {
@@ -1029,7 +1036,7 @@ export default function Dashboard() {
                   All ({subscriptions.length})
                 </TabsTrigger>
                 <TabsTrigger value="active">
-                  Active ({activeSubscriptions.length})
+                  Active ({activeCount})
                 </TabsTrigger>
                 <TabsTrigger value="paused">
                   Paused ({pausedSubscriptions.length})
@@ -1107,6 +1114,8 @@ export default function Dashboard() {
         onConfirmPause={handleConfirmPause}
         onNotSure={handleNotSure}
         onClose={() => setConfirmActionOpen(false)}
+        isExpired={confirmActionSub?.isExpired || false}
+        onRenewal={handleRenewalExpired}
       />
 
       {/* LLM Assistant Sheet */}

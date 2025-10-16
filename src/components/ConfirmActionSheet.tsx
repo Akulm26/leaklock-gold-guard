@@ -9,6 +9,8 @@ interface ConfirmActionSheetProps {
   onConfirmPause: () => void;
   onNotSure: () => void;
   onClose: () => void;
+  isExpired?: boolean;
+  onRenewal?: () => void;
 }
 
 export function ConfirmActionSheet({
@@ -18,6 +20,8 @@ export function ConfirmActionSheet({
   onConfirmPause,
   onNotSure,
   onClose,
+  isExpired = false,
+  onRenewal,
 }: ConfirmActionSheetProps) {
   if (!subscription) return null;
 
@@ -42,27 +46,48 @@ export function ConfirmActionSheet({
         </SheetHeader>
 
         <div className="space-y-3">
-          <Button
-            variant="destructive"
-            className="w-full h-12 text-base"
-            onClick={onConfirmCancel}
-          >
-            Confirm Cancel
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base"
-            onClick={onConfirmPause}
-          >
-            Confirm Pause
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full h-12 text-base"
-            onClick={onNotSure}
-          >
-            Not sure
-          </Button>
+          {isExpired ? (
+            <>
+              <Button
+                variant="default"
+                className="w-full h-12 text-base"
+                onClick={onRenewal}
+              >
+                Renewal
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full h-12 text-base"
+                onClick={onNotSure}
+              >
+                Not sure
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="destructive"
+                className="w-full h-12 text-base"
+                onClick={onConfirmCancel}
+              >
+                Confirm Cancel
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-12 text-base"
+                onClick={onConfirmPause}
+              >
+                Confirm Pause
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full h-12 text-base"
+                onClick={onNotSure}
+              >
+                Not sure
+              </Button>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
