@@ -12,11 +12,22 @@ import { toast } from "sonner";
 export default function ProfileSetup() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
 
   const handleContinue = () => {
     if (!name.trim()) {
       toast.error("Please enter your name");
+      return;
+    }
+    if (!email.trim()) {
+      toast.error("Please enter your email");
+      return;
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
       return;
     }
     if (!agreed) {
@@ -25,6 +36,7 @@ export default function ProfileSetup() {
     }
 
     localStorage.setItem("userName", name);
+    localStorage.setItem("userEmail", email);
     navigate("/action-select");
   };
 
@@ -66,6 +78,20 @@ export default function ProfileSetup() {
             />
           </div>
 
+          {/* Email Input */}
+          <div className="glass-card rounded-2xl p-6">
+            <label className="text-sm text-muted-foreground mb-2 block">
+              Your Email
+            </label>
+            <Input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-transparent border-none focus-visible:ring-0 text-lg"
+            />
+          </div>
+
           {/* Privacy Card */}
           <div className="glass-card rounded-2xl p-6 space-y-4">
             <div className="flex items-start gap-3">
@@ -102,7 +128,7 @@ export default function ProfileSetup() {
           size="lg"
           className="w-full"
           onClick={handleContinue}
-          disabled={!name.trim() || !agreed}
+          disabled={!name.trim() || !email.trim() || !agreed}
         >
           Continue
         </Button>
