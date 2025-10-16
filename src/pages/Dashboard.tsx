@@ -701,7 +701,7 @@ export default function Dashboard() {
     (sub) => sub.status === "canceled"
   );
   const expiredSubscriptions = subscriptions.filter(
-    (sub) => sub.status === "expired"
+    (sub) => sub.status.toLowerCase().includes("expired")
   );
   
   // Active Subscription Count Formula = Total - (Cancelled + Expired + Paused)
@@ -802,7 +802,7 @@ export default function Dashboard() {
           <span className={`font-medium ${renewal.color}`}>
             {sub.status === "active" ? `Renews ${renewal.text}` : 
              sub.status === "paused" ? "Paused" : 
-             sub.status === "expired" ? "Expired" : "Canceled"}
+             sub.status.toLowerCase().includes("expired") ? "Expired" : "Canceled"}
           </span>
           <div className="flex gap-2">
             <span className={`px-2 py-1 rounded-md text-xs font-medium ${sub.status.toLowerCase().includes("expired") ? statusColors.expired : statusColors[sub.status]}`}>
@@ -815,7 +815,7 @@ export default function Dashboard() {
         </div>
 
         {/* Expired Banner */}
-        {sub.status === "expired" && (
+        {sub.status.toLowerCase().includes("expired") && (
           <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertCircle className="text-amber-500 mt-0.5" size={16} />
