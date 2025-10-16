@@ -13,6 +13,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const userName = localStorage.getItem("userName");
   const phone = localStorage.getItem("phone");
+  const email = localStorage.getItem("userEmail") || "Not set";
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem("pushNotifications") !== "false");
   const [globalReminderEnabled, setGlobalReminderEnabled] = useState(() => localStorage.getItem("globalReminderEnabled") === "true");
   const [globalReminderDays, setGlobalReminderDays] = useState(() => localStorage.getItem("globalReminderDays") || "3");
@@ -140,6 +141,11 @@ export default function Settings() {
       icon: Shield,
       label: "Linked Number",
       value: phone,
+      action: () => {}
+    }, {
+      icon: User,
+      label: "Email",
+      value: email,
       action: () => {}
     }]
   }, {
