@@ -100,21 +100,22 @@ export default function OTP() {
       if (data.user) {
         toast.success("OTP verified successfully!");
 
-        /**
-         * STEP 3: Route user based on account status
-         *
-         * Check if this is a new user or existing user:
-         * - New user: Redirect to profile setup to collect name, preferences
-         * - Existing user: Redirect directly to dashboard
-         *
-         * Note: In production, you'd check this against a database table
-         * instead of localStorage
-         */
+      /**
+       * STEP 3: Route user based on account status
+       *
+       * Check if this is a new user or existing user:
+       * - New user: Redirect to profile setup to collect name, preferences
+       * - Existing user (returning): Skip SMS permission and go directly to dashboard
+       *
+       * This optimization skips redundant permission prompts for returning users
+       * who have already granted SMS access and completed onboarding
+       */
         const isNewUser = !localStorage.getItem("userName");
 
         if (isNewUser) {
           navigate("/profile-setup");
         } else {
+          // Returning user - skip SMS permission and go to dashboard
           navigate("/dashboard");
         }
       }

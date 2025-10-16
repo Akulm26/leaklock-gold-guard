@@ -178,7 +178,7 @@ export default function AddManual() {
             className="w-full"
             onClick={handleSave}
           >
-            Save Plan
+            Save Subscription
           </Button>
           <Button
             variant="text"

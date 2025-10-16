@@ -600,6 +600,11 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (id: string) => {
+    // Show confirmation dialog
+    if (!confirm("Are you sure you want to delete this subscription?")) {
+      return;
+    }
+    
     try {
       // Delete from Supabase database
       const { error } = await supabase
@@ -691,6 +696,9 @@ export default function Dashboard() {
   const expiredSubscriptions = subscriptions.filter(
     (sub) => sub.status === "expired"
   );
+  
+  // Active Subscription Count Formula = Total - (Cancelled + Expired + Paused)
+  const activeCount = subscriptions.length - (canceledSubscriptions.length + expiredSubscriptions.length + pausedSubscriptions.length);
 
   const renderSubscriptionCard = (sub: Subscription) => {
     const displayName = sub.plan_name || sub.name || sub.merchant_normalized;
@@ -739,14 +747,14 @@ export default function Dashboard() {
               className="h-8 w-8"
               onClick={() => {
                 if (sub.status === "expired") {
-                  setRecoverySub({
+                  // For expired subscriptions, show only Renewal and Not Sure
+                  setLlmAssistantSub({
                     id: sub.id,
                     name: sub.plan_name || sub.name || sub.merchant_normalized,
-                    provider: sub.merchant_normalized || sub.provider,
-                    expiredSince: sub.expired_since,
-                    lastEvidence: "Payment failed"
+                    provider: sub.merchant_normalized || sub.provider
                   });
-                  setRecoverySheetOpen(true);
+                  setLlmAction("renew");
+                  setLlmAssistantOpen(true);
                 } else if (sub.status === "paused" || sub.status === "canceled") {
                   handleRenewClick(sub);
                 } else {
@@ -754,7 +762,7 @@ export default function Dashboard() {
                 }
               }}
               title={
-                sub.status === "expired" ? "Recover subscription" :
+                sub.status === "expired" ? "Renew subscription" :
                 sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : 
                 "Update status"
               }
@@ -937,14 +945,26 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <Logo />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSyncSubscriptions}
-            disabled={isSyncing}
-          >
-            <RefreshCw size={20} className={isSyncing ? "animate-spin" : ""} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+            >
+              <Bell size={20} />
+              {isSyncing && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSyncSubscriptions}
+              disabled={isSyncing}
+            >
+              <RefreshCw size={20} className={isSyncing ? "animate-spin" : ""} />
+            </Button>
+          </div>
         </div>
 
         {/* Welcome */}
@@ -959,8 +979,8 @@ export default function Dashboard() {
         {subscriptions.length > 0 && (
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="glass-card rounded-xl p-4">
-              <p className="text-sm text-muted-foreground mb-1">Total Plans</p>
-              <p className="text-2xl font-bold">{subscriptions.length}</p>
+              <p className="text-sm text-muted-foreground mb-1">Active Plans</p>
+              <p className="text-2xl font-bold">{activeCount}</p>
             </div>
             <div className="glass-card rounded-xl p-4">
               <p className="text-sm text-muted-foreground mb-1">Next Renewal</p>

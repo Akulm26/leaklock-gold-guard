@@ -4,6 +4,7 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -26,6 +27,8 @@ export default function AutoSync() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const [detectedSubscriptions, setDetectedSubscriptions] = useState<any[]>([]);
+  const [selectedSubs, setSelectedSubs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     /**
@@ -98,9 +101,18 @@ export default function AutoSync() {
         // Update UI with success state
         setProgress(100);
         setSubscriptionCount(data?.subscriptions?.length || 0);
+        setDetectedSubscriptions(data?.subscriptions || []);
+        
+        // Initialize all as selected
+        const initialSelected: Record<string, boolean> = {};
+        (data?.subscriptions || []).forEach((sub: any) => {
+          initialSelected[sub.id] = true;
+        });
+        setSelectedSubs(initialSelected);
+        
         setIsComplete(true);
 
-        toast.success(`Successfully synced ${data?.subscriptions?.length || 0} subscriptions`);
+        toast.success(`Found ${data?.subscriptions?.length || 0} subscriptions`);
 
       } catch (err) {
         console.error('Unexpected error during sync:', err);
@@ -111,6 +123,44 @@ export default function AutoSync() {
 
     performSync();
   }, [navigate]);
+
+  const handleAccept = async () => {
+    const acceptedIds = Object.keys(selectedSubs).filter(id => selectedSubs[id]);
+    
+    if (acceptedIds.length === 0) {
+      toast.info("No subscriptions selected");
+      navigate("/dashboard");
+      return;
+    }
+
+    toast.success(`${acceptedIds.length} subscription${acceptedIds.length > 1 ? 's' : ''} added`);
+    navigate("/dashboard");
+  };
+
+  const handleReject = async () => {
+    // Delete all detected subscriptions from database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .delete()
+        .in('id', detectedSubscriptions.map(sub => sub.id));
+
+      if (error) throw error;
+
+      toast.info("Subscriptions rejected");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error('Error rejecting subscriptions:', error);
+      toast.error('Failed to reject subscriptions');
+    }
+  };
+
+  const toggleSubscription = (id: string) => {
+    setSelectedSubs(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
     <MobileLayout>
@@ -155,12 +205,39 @@ export default function AutoSync() {
                 <p className="text-sm text-muted-foreground">{error}</p>
               </div>
             ) : isComplete ? (
-              <div className="text-center space-y-4 animate-fade-in">
-                <h2 className="text-2xl font-bold">Sync Complete</h2>
-                <div className="glass-card rounded-xl p-4 inline-block">
-                  <p className="text-3xl font-bold text-primary">
-                    {subscriptionCount} subscription{subscriptionCount !== 1 ? 's' : ''} synced
+              <div className="space-y-6 animate-fade-in max-h-[60vh] overflow-y-auto">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-2">Review Detected Subscriptions</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Select subscriptions to track
                   </p>
+                </div>
+                
+                <div className="space-y-3">
+                  {detectedSubscriptions.map((sub) => (
+                    <div key={sub.id} className="glass-card rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedSubs[sub.id]}
+                          onCheckedChange={() => toggleSubscription(sub.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg mb-1">{sub.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            ₹{sub.amount} • Next renewal: {new Date(sub.next_billing_date).toLocaleDateString()}
+                          </p>
+                          <div className="inline-block px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium mt-2">
+                            Auto-detected
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="text-center text-sm text-muted-foreground">
+                  {Object.values(selectedSubs).filter(Boolean).length} of {detectedSubscriptions.length} selected
                 </div>
               </div>
             ) : (
@@ -208,14 +285,24 @@ export default function AutoSync() {
             Try Again
           </Button>
         ) : isComplete ? (
-          <Button
-            variant="gold"
-            size="lg"
-            className="w-full animate-fade-in"
-            onClick={() => navigate("/dashboard")}
-          >
-            View Subscriptions
-          </Button>
+          <div className="space-y-3 animate-fade-in">
+            <Button
+              variant="gold"
+              size="lg"
+              className="w-full"
+              onClick={handleAccept}
+            >
+              Accept Selected
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={handleReject}
+            >
+              Reject All
+            </Button>
+          </div>
         ) : null}
       </div>
     </MobileLayout>
