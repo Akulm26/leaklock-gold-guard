@@ -139,7 +139,7 @@ export default function Settings() {
     }, {
       icon: Shield,
       label: "Linked Number",
-      value: `+91 ${phone}`,
+      value: phone,
       action: () => {}
     }]
   }, {
