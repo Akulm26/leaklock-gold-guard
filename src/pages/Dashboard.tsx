@@ -803,7 +803,7 @@ export default function Dashboard() {
           </span>
           <div className="flex gap-2">
             <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[sub.status]}`}>
-              {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+              {sub.status.toLowerCase().includes("expired") || sub.status === "expired" ? "Expired" : sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
             </span>
             <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">
               {sub.source === "auto" ? "Auto" : "Manual"}
