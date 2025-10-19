@@ -89,7 +89,7 @@ export default function ProfileSetup() {
       localStorage.setItem("userEmail", email);
       
       toast.success("Profile saved successfully!");
-      navigate("/action-select");
+      navigate("/auto-sync");
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast.error('Failed to save profile. Please try again.');

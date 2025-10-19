@@ -117,10 +117,10 @@ export default function OTP() {
 
         // Check if profile exists with both name and email
         if (profileData && profileData.name && profileData.email) {
-          // Existing user with complete profile - go to dashboard
+          // Existing user with complete profile - go to auto-sync
           localStorage.setItem("userName", profileData.name);
           localStorage.setItem("userEmail", profileData.email);
-          navigate("/dashboard");
+          navigate("/auto-sync");
         } else {
           // New user or incomplete profile - go to profile setup
           navigate("/profile-setup");
