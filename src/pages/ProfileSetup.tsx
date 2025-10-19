@@ -16,27 +16,26 @@ export default function ProfileSetup() {
   const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
 
-  // Check if user already exists and redirect to dashboard
+  // Fetch existing profile data and pre-fill fields for existing users
   useEffect(() => {
-    const checkExistingUser = async () => {
+    const fetchExistingProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // User is authenticated, check if they have existing subscriptions
-        const { data: subs } = await supabase
-          .from('subscriptions')
-          .select('id')
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name, email')
           .eq('user_id', user.id)
-          .limit(1);
+          .maybeSingle();
         
-        if (subs && subs.length > 0) {
-          // Existing user with data, go directly to dashboard
-          navigate("/dashboard");
-          return;
+        if (profileData) {
+          // Pre-fill fields with existing data
+          if (profileData.name) setName(profileData.name);
+          if (profileData.email) setEmail(profileData.email);
         }
       }
     };
-    checkExistingUser();
-  }, [navigate]);
+    fetchExistingProfile();
+  }, []);
 
   const handleContinue = async () => {
     if (!name.trim()) {
