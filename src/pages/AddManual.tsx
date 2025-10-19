@@ -55,7 +55,7 @@ export default function AddManual() {
       );
 
       if (isDuplicate) {
-        toast.error("This subscription already exists");
+        toast.error("This subscription already exists with the same renewal date. Please edit the existing entry or change the date.");
         return;
       }
 
