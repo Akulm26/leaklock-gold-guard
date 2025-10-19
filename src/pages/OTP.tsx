@@ -101,30 +101,10 @@ export default function OTP() {
         toast.success("OTP verified successfully!");
 
         /**
-         * STEP 3: Check if user has Name and Email in profiles table
-         * - If profile exists with name/email: Navigate to dashboard
-         * - If profile missing or incomplete: Navigate to profile setup to collect name/email
+         * STEP 3: Always navigate to profile setup for all users
+         * - All users must enter their name and email after OTP validation
          */
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('name, email')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        }
-
-        // Check if profile exists with both name and email
-        if (profileData && profileData.name && profileData.email) {
-          // Existing user with complete profile - go to auto-sync
-          localStorage.setItem("userName", profileData.name);
-          localStorage.setItem("userEmail", profileData.email);
-          navigate("/auto-sync");
-        } else {
-          // New user or incomplete profile - go to profile setup
-          navigate("/profile-setup");
-        }
+        navigate("/profile-setup");
       }
     } catch (error: any) {
       console.error("OTP verification error:", error);
