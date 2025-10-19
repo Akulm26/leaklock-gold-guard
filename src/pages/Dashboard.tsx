@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, Info, RefreshCw, AlertCircle } from "lucide-react";
+import { Plus, Bell, Settings, Edit, Trash2, MessageCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { SoftEvidenceBanner } from "@/components/SoftEvidenceBanner";
 import { AmazonAssistantSheet } from "@/components/AmazonAssistantSheet";
@@ -97,7 +97,6 @@ export default function Dashboard() {
     action: "skip" | "pause" | "cancel";
   } | null>(null);
   const [amazonSheetOpen, setAmazonSheetOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   
   // New state for sheets
   const [editingSubscription, setEditingSubscription] = useState<any>(null);
@@ -173,17 +172,8 @@ export default function Dashboard() {
   };
 
   const handleSyncSubscriptions = async () => {
-    setIsSyncing(true);
-    try {
-      // Simulate SMS data sync
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      await loadSubscriptionsFromDatabase();
-      toast.success("Subscriptions synced from SMS data");
-    } catch (error) {
-      toast.error("Failed to sync subscriptions");
-    } finally {
-      setIsSyncing(false);
-    }
+    // Redirect to AutoSync page instead of syncing here
+    navigate("/auto-sync");
   };
 
   /**
@@ -748,36 +738,6 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex gap-1">
-            {/* Info button - shows renew option for paused/canceled, recovery for expired, status change for active */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => {
-                // Check if renewal date has passed (shows "Renews Expired")
-                if (isExpiredRenewal) {
-                  // For expired subscriptions, show ConfirmActionSheet with Renew and Not Sure
-                  setConfirmActionSub({
-                    id: sub.id,
-                    name: sub.plan_name || sub.name || sub.merchant_normalized,
-                    provider: sub.merchant_normalized || sub.provider,
-                    isExpired: true
-                  });
-                  setConfirmActionOpen(true);
-                } else if (sub.status === "paused" || sub.status === "canceled") {
-                  handleRenewClick(sub);
-                } else {
-                  handleOpenStatusChange(sub);
-                }
-              }}
-              title={
-                isExpiredRenewal ? "Renew subscription" :
-                sub.status === "paused" || sub.status === "canceled" ? "Renew subscription" : 
-                "Update status"
-              }
-            >
-              <Info size={16} />
-            </Button>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -962,17 +922,6 @@ export default function Dashboard() {
               className="relative"
             >
               <Bell size={20} />
-              {isSyncing && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSyncSubscriptions}
-              disabled={isSyncing}
-            >
-              <RefreshCw size={20} className={isSyncing ? "animate-spin" : ""} />
             </Button>
           </div>
         </div>

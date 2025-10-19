@@ -140,20 +140,22 @@ export function EditSubscriptionSheet({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Next Renewal Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal glass-card", !renewalDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {renewalDate ? format(renewalDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={renewalDate} onSelect={setRenewalDate} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
+            {status !== "canceled" && (
+              <div className="space-y-2">
+                <Label>Next Renewal Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal glass-card", !renewalDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {renewalDate ? format(renewalDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={renewalDate} onSelect={setRenewalDate} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Last Payment Date (Optional)</Label>
@@ -172,14 +174,9 @@ export function EditSubscriptionSheet({
 
             <div className="space-y-2">
               <Label>Status</Label>
-              <div className="flex gap-2">
-                <span className={cn("px-3 py-1.5 rounded-lg text-sm font-medium", status === "active" && "bg-primary/20 text-primary", status === "paused" && "bg-yellow-500/20 text-yellow-500", status === "canceled" && "bg-destructive/20 text-destructive")}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </span>
-                <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-secondary">
-                  Source: {subscription.provider}
-                </span>
-              </div>
+              <span className={cn("inline-block px-3 py-1.5 rounded-lg text-sm font-medium", status === "active" && "bg-primary/20 text-primary", status === "paused" && "bg-yellow-500/20 text-yellow-500", status === "canceled" && "bg-destructive/20 text-destructive")}>
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </span>
             </div>
           </div>
 
@@ -201,7 +198,7 @@ export function EditSubscriptionSheet({
                   </Label>
                   <div className="flex flex-wrap gap-2">
                     {quickDays.map(day => <button key={day} onClick={() => toggleDay(day)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition-all", selectedDays.includes(day) ? "bg-primary text-primary-foreground shadow-md" : "glass-card hover:bg-secondary")}>
-                        T-{day}
+                        {day === 1 ? "One day prior" : `${day} days prior`}
                       </button>)}
                   </div>
                   <Input type="number" placeholder="Custom days (e.g., 5)" onKeyDown={e => {
@@ -216,26 +213,71 @@ export function EditSubscriptionSheet({
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-border/50">
-                  <Label>Daily Reminders (Start from T-n)</Label>
+                  <Label>Daily Reminders (Start from)</Label>
                   <Select value={dailyFromT} onValueChange={setDailyFromT}>
                     <SelectTrigger className="glass-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="30">T-30 days</SelectItem>
-                      <SelectItem value="21">T-21 days</SelectItem>
-                      <SelectItem value="14">T-14 days</SelectItem>
-                      <SelectItem value="10">T-10 days</SelectItem>
-                      <SelectItem value="7">T-7 days</SelectItem>
+                      <SelectItem value="30">30 days prior</SelectItem>
+                      <SelectItem value="21">21 days prior</SelectItem>
+                      <SelectItem value="14">14 days prior</SelectItem>
+                      <SelectItem value="10">10 days prior</SelectItem>
+                      <SelectItem value="7">7 days prior</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </>}
           </div>
 
-          {/* Inline Actions */}
-          
+          {/* Status Actions */}
+          <div className="glass-card rounded-xl p-4 space-y-3">
+            <Label>Actions</Label>
+            {status === "active" && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    onStatusChange(subscription.id, "pause");
+                    onClose();
+                  }}
+                >
+                  Confirm Pause
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => {
+                    onStatusChange(subscription.id, "cancel");
+                    onClose();
+                  }}
+                >
+                  Confirm Cancel
+                </Button>
+              </>
+            )}
+            {(status === "paused" || status === "canceled") && (
+              <Button
+                variant="gold"
+                className="w-full"
+                onClick={() => {
+                  onStatusChange(subscription.id, "resume");
+                  onClose();
+                }}
+              >
+                Renew Subscription
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={onClose}
+            >
+              Not Sure
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-3 pt-6 sticky bottom-0 bg-background pb-6">

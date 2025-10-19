@@ -179,7 +179,7 @@ export default function Settings() {
                       </SelectTrigger>
                       <SelectContent>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <SelectItem key={n} value={n.toString()}>
-                            T-{n} days
+                            {n === 1 ? "One day prior" : `${n} days prior`}
                           </SelectItem>)}
                       </SelectContent>
                     </Select>

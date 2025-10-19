@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Logo } from "@/components/Logo";
@@ -8,12 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Shield } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
+
+  // Check if user already exists and redirect to dashboard
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // User is authenticated, check if they have existing subscriptions
+        const { data: subs } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+        
+        if (subs && subs.length > 0) {
+          // Existing user with data, go directly to dashboard
+          navigate("/dashboard");
+          return;
+        }
+      }
+    };
+    checkExistingUser();
+  }, [navigate]);
 
   const handleContinue = () => {
     if (!name.trim()) {

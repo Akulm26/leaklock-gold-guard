@@ -20,7 +20,6 @@ export default function AddManual() {
   const [service, setService] = useState("");
   const [amount, setAmount] = useState("");
   const [renewalDate, setRenewalDate] = useState("");
-  const [phone, setPhone] = useState("");
 
   const handleSave = async () => {
     if (!service.trim()) {
@@ -40,6 +39,23 @@ export default function AddManual() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Please log in to add subscriptions");
+        return;
+      }
+
+      // Check for duplicates
+      const { data: existingSubs } = await supabase
+        .from('subscriptions')
+        .select('name, next_billing_date')
+        .eq('user_id', user.id);
+
+      const isDuplicate = existingSubs?.some(
+        (sub) =>
+          sub.name.toLowerCase() === service.trim().toLowerCase() &&
+          sub.next_billing_date === renewalDate
+      );
+
+      if (isDuplicate) {
+        toast.error("This subscription already exists");
         return;
       }
 
@@ -155,18 +171,6 @@ export default function AddManual() {
               </div>
             </div>
 
-            <div className="glass-card rounded-xl p-4">
-              <label className="text-sm text-muted-foreground mb-2 block">
-                Phone Number (Optional)
-              </label>
-              <Input
-                type="tel"
-                placeholder="+91"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="bg-transparent border-none focus-visible:ring-0"
-              />
-            </div>
           </div>
         </div>
 

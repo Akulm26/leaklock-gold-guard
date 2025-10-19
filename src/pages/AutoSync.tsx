@@ -133,7 +133,43 @@ export default function AutoSync() {
       return;
     }
 
-    toast.success(`${acceptedIds.length} subscription${acceptedIds.length > 1 ? 's' : ''} added`);
+    // Check for duplicates before accepting
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingSubs } = await supabase
+        .from('subscriptions')
+        .select('name, next_billing_date')
+        .eq('user_id', user.id);
+
+      // Filter out duplicates
+      const acceptedSubs = detectedSubscriptions.filter(sub => selectedSubs[sub.id]);
+      const nonDuplicates = acceptedSubs.filter(newSub => {
+        return !existingSubs?.some(
+          existing =>
+            existing.name.toLowerCase() === newSub.name.toLowerCase() &&
+            existing.next_billing_date === newSub.next_billing_date
+        );
+      });
+
+      // Delete the duplicates
+      const duplicateIds = acceptedSubs
+        .filter(sub => !nonDuplicates.includes(sub))
+        .map(sub => sub.id);
+
+      if (duplicateIds.length > 0) {
+        await supabase.from('subscriptions').delete().in('id', duplicateIds);
+        toast.info(`${duplicateIds.length} duplicate${duplicateIds.length > 1 ? 's' : ''} skipped`);
+      }
+
+      if (nonDuplicates.length > 0) {
+        toast.success(`${nonDuplicates.length} subscription${nonDuplicates.length > 1 ? 's' : ''} added`);
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+    }
+
     navigate("/dashboard");
   };
 
@@ -303,7 +339,16 @@ export default function AutoSync() {
               Reject All
             </Button>
           </div>
-        ) : null}
+        ) : (
+          <Button
+            variant="gold"
+            size="lg"
+            className="w-full"
+            onClick={() => window.location.reload()}
+          >
+            Sync Now
+          </Button>
+        )}
       </div>
     </MobileLayout>
   );

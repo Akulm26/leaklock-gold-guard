@@ -6,7 +6,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface DetectedChange {
   subscriptionId: string;
@@ -36,10 +40,27 @@ export function StatusChangeSheet({
   onNotSure,
   onClose,
 }: StatusChangeSheetProps) {
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [showReasonInput, setShowReasonInput] = useState(false);
+
   if (!detectedChange) return null;
 
   const handleConfirmCanceled = () => {
+    if (!showReasonInput) {
+      setShowReasonInput(true);
+      return;
+    }
+    
+    if (!cancellationReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+    
+    // Store the reason (could be saved to database if needed)
+    console.log("Cancellation reason:", cancellationReason);
     onConfirm(detectedChange.subscriptionId, "canceled");
+    setCancellationReason("");
+    setShowReasonInput(false);
     onClose();
   };
 
@@ -92,12 +113,23 @@ export function StatusChangeSheet({
         </SheetHeader>
 
         <div className="space-y-3">
+          {showReasonInput && (
+            <div className="space-y-2 animate-fade-in">
+              <Label>Reason for cancellation *</Label>
+              <Textarea
+                placeholder="Please tell us why you're canceling..."
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          )}
           <Button
             variant="destructive"
             className="w-full h-12 text-base"
             onClick={handleConfirmCanceled}
           >
-            Confirm Canceled
+            {showReasonInput ? "Submit & Confirm Canceled" : "Confirm Canceled"}
           </Button>
           <Button
             variant="outline"
