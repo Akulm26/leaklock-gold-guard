@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { CalendarIcon, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -46,6 +48,8 @@ export function EditSubscriptionSheet({
   const [selectedDays, setSelectedDays] = useState<number[]>([3]);
   const [dailyFromT, setDailyFromT] = useState<string>("none");
   const [lastPaymentDate, setLastPaymentDate] = useState<Date>();
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
   useEffect(() => {
     if (subscription) {
       setName(subscription.name || subscription.provider);
@@ -102,6 +106,38 @@ export function EditSubscriptionSheet({
   };
   const toggleDay = (day: number) => {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort((a, b) => b - a));
+  };
+  
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancellationReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+
+    if (!subscription) return;
+
+    try {
+      // Save cancellation reason to database
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ cancellation_reason: cancellationReason.trim() })
+        .eq('id', subscription.id);
+
+      if (error) throw error;
+
+      // Close modal and trigger status change
+      setShowCancelModal(false);
+      setCancellationReason("");
+      onStatusChange(subscription.id, "cancel");
+      onClose();
+    } catch (error) {
+      console.error('Error saving cancellation reason:', error);
+      toast.error('Failed to save cancellation reason');
+    }
   };
   const quickDays = [1, 3, 7, 10, 14, 21, 30];
   if (!subscription) return null;
@@ -235,10 +271,10 @@ export function EditSubscriptionSheet({
           <div className="glass-card rounded-xl p-4 space-y-3">
             <Label>Actions</Label>
             {status === "active" && (
-              <>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="flex-1"
                   onClick={() => {
                     onStatusChange(subscription.id, "pause");
                     onClose();
@@ -248,35 +284,41 @@ export function EditSubscriptionSheet({
                 </Button>
                 <Button
                   variant="destructive"
-                  className="w-full"
-                  onClick={() => {
-                    onStatusChange(subscription.id, "cancel");
-                    onClose();
-                  }}
+                  className="flex-1"
+                  onClick={handleCancelClick}
                 >
                   Confirm Cancel
                 </Button>
-              </>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={onClose}
+                >
+                  Not Sure
+                </Button>
+              </div>
             )}
             {(status === "paused" || status === "canceled") && (
-              <Button
-                variant="gold"
-                className="w-full"
-                onClick={() => {
-                  onStatusChange(subscription.id, "resume");
-                  onClose();
-                }}
-              >
-                Renew Subscription
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="gold"
+                  className="flex-1"
+                  onClick={() => {
+                    onStatusChange(subscription.id, "resume");
+                    onClose();
+                  }}
+                >
+                  Renew Subscription
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={onClose}
+                >
+                  Not Sure
+                </Button>
+              </div>
             )}
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={onClose}
-            >
-              Not Sure
-            </Button>
           </div>
         </div>
 
@@ -289,5 +331,48 @@ export function EditSubscriptionSheet({
           </Button>
         </div>
       </SheetContent>
+
+      {/* Cancellation Reason Modal */}
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Cancellation</DialogTitle>
+            <DialogDescription>
+              Please tell us why you're canceling this subscription
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">Reason for cancellation *</Label>
+              <Textarea
+                id="cancel-reason"
+                placeholder="Please tell us why you're canceling..."
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancellationReason("");
+                }}
+              >
+                Go Back
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleConfirmCancel}
+              >
+                Confirm Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>;
 }

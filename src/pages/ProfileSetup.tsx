@@ -38,7 +38,7 @@ export default function ProfileSetup() {
     checkExistingUser();
   }, [navigate]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!name.trim()) {
       toast.error("Please enter your name");
       return;
@@ -58,9 +58,42 @@ export default function ProfileSetup() {
       return;
     }
 
-    localStorage.setItem("userName", name);
-    localStorage.setItem("userEmail", email);
-    navigate("/action-select");
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("User not authenticated");
+        navigate("/");
+        return;
+      }
+
+      // Get phone from localStorage
+      const phone = localStorage.getItem("phone") || "";
+
+      // Save name and email to profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          mobile_number: phone,
+          name: name.trim(),
+          email: email.trim(),
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      // Store in localStorage for quick access
+      localStorage.setItem("userName", name);
+      localStorage.setItem("userEmail", email);
+      
+      toast.success("Profile saved successfully!");
+      navigate("/action-select");
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to save profile. Please try again.');
+    }
   };
 
   return (

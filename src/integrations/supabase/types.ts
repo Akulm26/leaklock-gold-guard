@@ -47,6 +47,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          mobile_number: string
+          name: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          mobile_number: string
+          name?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          mobile_number?: string
+          name?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscription_templates: {
         Row: {
           amount_max: number
@@ -88,6 +118,7 @@ export type Database = {
           amazon_nudge_dismissed: boolean | null
           amount: number
           billing_cycle: string
+          cancellation_reason: string | null
           category: string | null
           count_expired_as_savings: boolean | null
           created_at: string | null
@@ -120,6 +151,7 @@ export type Database = {
           amazon_nudge_dismissed?: boolean | null
           amount: number
           billing_cycle: string
+          cancellation_reason?: string | null
           category?: string | null
           count_expired_as_savings?: boolean | null
           created_at?: string | null
@@ -152,6 +184,7 @@ export type Database = {
           amazon_nudge_dismissed?: boolean | null
           amount?: number
           billing_cycle?: string
+          cancellation_reason?: string | null
           category?: string | null
           count_expired_as_savings?: boolean | null
           created_at?: string | null

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DetectedChange {
   subscriptionId: string;
@@ -45,7 +46,7 @@ export function StatusChangeSheet({
 
   if (!detectedChange) return null;
 
-  const handleConfirmCanceled = () => {
+  const handleConfirmCanceled = async () => {
     if (!showReasonInput) {
       setShowReasonInput(true);
       return;
@@ -56,8 +57,18 @@ export function StatusChangeSheet({
       return;
     }
     
-    // Store the reason (could be saved to database if needed)
-    console.log("Cancellation reason:", cancellationReason);
+    // Save the cancellation reason to database
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ cancellation_reason: cancellationReason.trim() })
+        .eq('id', detectedChange.subscriptionId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving cancellation reason:', error);
+    }
+    
     onConfirm(detectedChange.subscriptionId, "canceled");
     setCancellationReason("");
     setShowReasonInput(false);

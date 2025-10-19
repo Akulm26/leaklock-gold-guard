@@ -89,7 +89,7 @@ export default function OTP() {
       if (error) throw error;
 
       /**
-       * STEP 2: Handle successful authentication
+       * STEP 2: Handle successful authentication & check profile
        *
        * data.user contains:
        * - id: Unique user ID (UUID)
@@ -100,23 +100,30 @@ export default function OTP() {
       if (data.user) {
         toast.success("OTP verified successfully!");
 
-      /**
-       * STEP 3: Route user based on account status
-       *
-       * Check if this is a new user or existing user:
-       * - New user: Redirect to profile setup to collect name, preferences
-       * - Existing user (returning): Skip SMS permission and go directly to dashboard
-       *
-       * This optimization skips redundant permission prompts for returning users
-       * who have already granted SMS access and completed onboarding
-       */
-        const isNewUser = !localStorage.getItem("userName");
+        /**
+         * STEP 3: Check if user has Name and Email in profiles table
+         * - If profile exists with name/email: Navigate to dashboard
+         * - If profile missing or incomplete: Navigate to profile setup to collect name/email
+         */
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
 
-        if (isNewUser) {
-          navigate("/profile-setup");
-        } else {
-          // Returning user - skip SMS permission and go to dashboard
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+
+        // Check if profile exists with both name and email
+        if (profileData && profileData.name && profileData.email) {
+          // Existing user with complete profile - go to dashboard
+          localStorage.setItem("userName", profileData.name);
+          localStorage.setItem("userEmail", profileData.email);
           navigate("/dashboard");
+        } else {
+          // New user or incomplete profile - go to profile setup
+          navigate("/profile-setup");
         }
       }
     } catch (error: any) {
