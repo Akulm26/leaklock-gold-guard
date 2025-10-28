@@ -117,15 +117,15 @@ export default function EditSubscription() {
   return (
     <MobileLayout>
       <BackButton />
-      <div className="flex flex-col h-full px-4 sm:px-6 py-8 pb-24 animate-fade-in">
-        <div className="mb-4">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Edit Subscription</h1>
-          <p className="text-sm text-muted-foreground">Update plan details and reminders</p>
+      <div className="flex flex-col h-full px-6 py-8 pb-24 animate-fade-in">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">Edit Subscription</h1>
+          <p className="text-muted-foreground">Update plan details and reminders</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+        <div className="flex-1 overflow-y-auto space-y-6">
           {/* Basic Info */}
-          <div className="glass-card rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="glass-card rounded-xl p-4 space-y-4">
             <div className="space-y-2">
               <Label>Service Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -198,7 +198,7 @@ export default function EditSubscription() {
           </div>
 
           {/* Reminders */}
-          <div className="glass-card rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="glass-card rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Enable Reminders</p>
@@ -276,7 +276,7 @@ export default function EditSubscription() {
           </div>
         </div>
 
-        <div className="space-y-2 pt-4 sticky bottom-20 bg-gradient-background pb-2">
+        <div className="space-y-3 pt-6">
           <Button variant="gold" size="lg" className="w-full" onClick={handleSave}>
             Save Changes
           </Button>
