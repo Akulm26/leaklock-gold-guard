@@ -289,35 +289,19 @@ export function EditSubscriptionSheet({
                 >
                   Confirm Cancel
                 </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onClick={onClose}
-                >
-                  Not Sure
-                </Button>
               </div>
             )}
             {(status === "paused" || status === "canceled") && (
-              <div className="flex gap-2">
-                <Button
-                  variant="gold"
-                  className="flex-1"
-                  onClick={() => {
-                    onStatusChange(subscription.id, "resume");
-                    onClose();
-                  }}
-                >
-                  Renew Subscription
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onClick={onClose}
-                >
-                  Not Sure
-                </Button>
-              </div>
+              <Button
+                variant="gold"
+                className="w-full"
+                onClick={() => {
+                  onStatusChange(subscription.id, "resume");
+                  onClose();
+                }}
+              >
+                Renew Subscription
+              </Button>
             )}
           </div>
         </div>
