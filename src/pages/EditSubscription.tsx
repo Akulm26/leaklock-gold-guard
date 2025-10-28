@@ -117,7 +117,7 @@ export default function EditSubscription() {
   return (
     <MobileLayout>
       <BackButton />
-      <div className="flex flex-col h-full px-6 py-12 pb-24 animate-fade-in">
+      <div className="flex flex-col h-full px-4 py-12 pb-24 animate-fade-in">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Edit Subscription</h1>
