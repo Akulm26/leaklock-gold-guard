@@ -117,13 +117,15 @@ export default function EditSubscription() {
   return (
     <MobileLayout>
       <BackButton />
-      <div className="flex flex-col h-full px-6 py-8 pb-24 animate-fade-in">
-        <div className="mb-6">
+      <div className="flex flex-col h-full px-6 py-12 pb-24 animate-fade-in">
+        {/* Header */}
+        <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Edit Subscription</h1>
           <p className="text-muted-foreground">Update plan details and reminders</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-6">
+        {/* Content */}
+        <div className="flex-1 space-y-6">
           {/* Basic Info */}
           <div className="glass-card rounded-xl p-4 space-y-4">
             <div className="space-y-2">
@@ -276,7 +278,8 @@ export default function EditSubscription() {
           </div>
         </div>
 
-        <div className="space-y-3 pt-6">
+        {/* Actions */}
+        <div className="space-y-3">
           <Button variant="gold" size="lg" className="w-full" onClick={handleSave}>
             Save Changes
           </Button>
