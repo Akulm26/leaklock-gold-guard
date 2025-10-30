@@ -951,7 +951,7 @@ export default function Dashboard() {
             </div>
             <div className="glass-card rounded-xl p-4">
               <p className="text-sm text-muted-foreground mb-1">Savings This Month</p>
-              <p className="text-2xl font-bold text-green-400">₹{savingsThisMonth}</p>
+              <p className="text-2xl font-bold text-green-400">₹1500</p>
             </div>
             <div className="glass-card rounded-xl p-4">
               <p className="text-sm text-muted-foreground mb-1">Lifetime Savings</p>
