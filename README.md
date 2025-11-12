@@ -1,6 +1,6 @@
-# Subscription Management App
+# LeakLock Gold Guard 🔒💰
 
-A beautiful, modern subscription tracking application built with React, TypeScript, and Supabase.
+A beautiful, modern subscription tracking mobile application built with React, TypeScript, and Capacitor. Available for iOS and Android.
 
 ## 📚 Documentation
 
@@ -20,7 +20,8 @@ A beautiful, modern subscription tracking application built with React, TypeScri
 
 - **Frontend:** React 18, TypeScript, Vite
 - **UI:** Tailwind CSS, shadcn/ui
-- **Backend:** Supabase (PostgreSQL + Edge Functions)
+- **Mobile:** Capacitor (iOS & Android)
+- **Backend:** Lovable Cloud (PostgreSQL + Edge Functions)
 - **State:** TanStack Query (React Query)
 - **Routing:** React Router v6
 - **AI:** Lovable AI Gateway
@@ -48,6 +49,7 @@ A beautiful, modern subscription tracking application built with React, TypeScri
 │   │   ├── subscription-assistant/
 │   │   └── trigger-n8n-webhook/
 │   └── config.toml        # Supabase configuration
+├── capacitor.config.ts    # Mobile app configuration
 ├── TECHNICAL_DOCUMENTATION.md
 ├── API_DOCUMENTATION.md
 └── README.md
@@ -88,8 +90,11 @@ See [API Documentation](./API_DOCUMENTATION.md) for complete API reference.
 ## 🚦 Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Supabase account
+- Node.js 18+ or Bun
+- Git
+- **For mobile development:**
+  - Xcode 14+ (for iOS)
+  - Android Studio (for Android)
 - n8n instance (optional, for automation)
 
 ### Installation
@@ -117,14 +122,97 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>
 npm run dev
 ```
 
+Visit [http://localhost:8080](http://localhost:8080) to view the app.
+
 ### Database Setup
 
-Database migrations are handled automatically through Supabase. The following tables will be created:
+Database migrations are handled automatically through Lovable Cloud. The following tables will be created:
 
 - `subscriptions` - User subscription data
 - `n8n_webhooks` - Webhook configurations
 
 Edge functions are deployed automatically with code changes.
+
+## 📱 Mobile Development
+
+### Initial Setup
+
+1. **Build the web app**
+   ```bash
+   npm run build
+   ```
+
+2. **Add iOS platform** (macOS only)
+   ```bash
+   npx cap add ios
+   npx cap sync ios
+   ```
+
+3. **Add Android platform**
+   ```bash
+   npx cap add android
+   npx cap sync android
+   ```
+
+### Running on iOS
+
+1. **Open in Xcode**
+   ```bash
+   npx cap open ios
+   ```
+
+2. **Select a simulator or device** in Xcode
+
+3. **Click Run** (▶️ button)
+
+### Running on Android
+
+1. **Open in Android Studio**
+   ```bash
+   npx cap open android
+   ```
+
+2. **Select an emulator or device**
+
+3. **Click Run** (▶️ button)
+
+### Development Workflow
+
+After making changes to your web code:
+
+```bash
+# Build the web app
+npm run build
+
+# Sync changes to native projects
+npx cap sync
+
+# Or sync to specific platform
+npx cap sync ios
+npx cap sync android
+```
+
+### Building for Production
+
+**iOS:**
+1. Open project in Xcode: `npx cap open ios`
+2. Select **Product → Archive**
+3. Upload to App Store Connect
+4. Submit for review
+
+**Android:**
+1. Open project in Android Studio: `npx cap open android`
+2. Select **Build → Generate Signed Bundle / APK**
+3. Upload to Google Play Console
+4. Submit for review
+
+### Mobile Configuration
+
+The `capacitor.config.ts` file contains:
+- **appId**: `app.lovable.8248bf29c0a04110be2d4427550ead35`
+- **appName**: `leaklock-gold-guard`
+- **webDir**: `dist` (build output)
+- **server.url**: Development server URL for live reload
 
 ## 🔐 Authentication (Planned)
 
@@ -188,11 +276,16 @@ See [Technical Documentation](./TECHNICAL_DOCUMENTATION.md#security-consideratio
 
 ## 🚀 Deployment
 
+### Web Deployment
 - **Frontend:** Lovable Cloud (automatic)
-- **Backend:** Supabase Cloud
+- **Backend:** Lovable Cloud
 - **Edge Functions:** Auto-deployed with code changes
 
-No manual deployment steps required.
+No manual deployment steps required for web.
+
+### Mobile App Deployment
+
+See [Mobile Development](#-mobile-development) section for iOS App Store and Google Play Store submission instructions.
 
 ## 📝 Environment Variables
 
