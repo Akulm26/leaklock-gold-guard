@@ -1,8 +1,8 @@
 import { Lock } from "lucide-react";
 
-export function Logo({ size = "default" }: { size?: "default" | "large" }) {
-  const sizeClasses = size === "large" ? "text-3xl" : "text-2xl";
-  const iconSize = size === "large" ? 32 : 24;
+export function Logo({ size = "default" }: { size?: "default" | "large" | "xl" }) {
+  const sizeClasses = size === "xl" ? "text-4xl" : size === "large" ? "text-3xl" : "text-2xl";
+  const iconSize = size === "xl" ? 48 : size === "large" ? 32 : 24;
   
   return (
     <div className="flex items-center gap-2">

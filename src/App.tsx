@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { SplashScreen } from "@/components/SplashScreen";
 import Welcome from "./pages/Welcome";
 import OTP from "./pages/OTP";
 import ProfileSetup from "./pages/ProfileSetup";
@@ -29,9 +30,16 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
         <Toaster />
         <Sonner />
         <BrowserRouter>
